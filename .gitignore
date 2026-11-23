@@ -221,3 +221,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Reference papers: licensed copies with personal watermarks, never commit
+Papers/
+
+# Personal Claude Code instructions
+CLAUDE.local.md
+
+# Generated test figures
+figures/
