@@ -6,10 +6,21 @@ records how they were measured and gives the values.
 
 ## 1. Conditions
 
-The limits were judged on 2026-11-22 by the author, on an LG DualUp monitor
-in a moderately lit room. They are judgements of what remains satisfactory in
-a plot, not thresholds of detection. They apply only approximately to other
-displays and rooms.
+The limits were judged on 2026-11-22 by the author, who has normal colour
+vision, on an LG DualUp monitor in a moderately lit room. They are judgements
+of what remains satisfactory in a plot, not thresholds of detection. They
+apply only approximately to other displays and rooms.
+
+The monitor was in its DCI-P3 picture mode, without colour management, so
+sRGB colour values were shown with the monitor's wider primaries. Taking the
+mode to use Display P3 primaries with the sRGB tone curve, the colours at the
+measured limits were shown up to about 2 units of J' lighter or darker than
+the model assumes, and 2 to 18 % more colourful; the largest increases were
+for oranges, yellows and greens. The lightness shifts are smaller than the
+steps of 5 units between rows of the charts. The limits are therefore
+expected to hold for sRGB displays to within the resolution of the charts,
+but the colours were judged as bolder than they appear on an sRGB display. A
+check in the monitor's sRGB mode is planned.
 
 ## 2. Procedure
 

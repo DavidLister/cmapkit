@@ -99,7 +99,10 @@ spreads apart the colours that do not limit it. The colours are rounded to
 ## 4. Calibration
 
 The lightness limits were judged by the author on an LG DualUp monitor in a
-moderately lit room, on white, black and #333333 backgrounds. For other
+moderately lit room, on white, black and #333333 backgrounds. The monitor was
+in a wide-gamut (DCI-P3) mode at the time, which showed colours somewhat more
+saturated than a standard sRGB display does; docs/calibration.md estimates
+the effect. For other
 backgrounds the limits are interpolated in the background's lightness, and
 MCCP warns when this happens for a mid-tone background, where the
 interpolation is least certain. `diagnostics["bounds"]` states which applies.
@@ -180,9 +183,9 @@ colours for normal vision, and `diagnostics`, which include:
 
 ## 7. Limitations
 
-- The lightness limits rest on one observer and one display. Backgrounds
-  other than white, black and #333333 use interpolated limits not checked by
-  eye.
+- The lightness limits rest on one observer and one display, used in a
+  wide-gamut mode. Backgrounds other than white, black and #333333 use
+  interpolated limits not checked by eye.
 - No measure of colour difference has been validated for differences as
   large as those between palette colours.
 - To keep colours distinct, MCCP admits colours of low luminance contrast
@@ -217,9 +220,10 @@ The code, tests, benchmarks and documentation, including the review of the
 literature, were written by an AI system (Claude, from Anthropic) under the
 author's direction. The author set the aims, chose among the alternatives
 proposed, supplied the papers, made every visual judgement (the calibration,
-and the comparisons by eye reported in docs/results.md), and reviewed the
-results. Citations were checked against the sources where these were
-available; those not confirmed are marked in docs/prior-work.md. The CAM16
+and the comparisons by eye reported in docs/results.md), reviewed the
+results, and read the code before its release. Citations were checked
+against the sources by the AI system where these were available; those not
+confirmed are marked in docs/prior-work.md. The CAM16
 implementation is tested against the colour-science package.
 
 ## References
