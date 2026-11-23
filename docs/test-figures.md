@@ -1,6 +1,6 @@
 # The ring figure
 
-This note describes the disc used to inspect palettes (README, Section 4.4).
+This note describes the disc used to inspect palettes ([design.md](design.md), Section 7).
 
 ## 1. Layout
 
@@ -50,7 +50,7 @@ for each R). These values are not proved minimal.
 ## 4. Fixed rings
 
 The outer ring has the largest cells. It is set to the similar ordering of
-the palette (README, Section 4.1), so that the most alike colours are
+the palette ([design.md](design.md), Section 7), so that the most alike colours are
 compared at the largest size. Where the search allows, the innermost ring is
 set to the contrasting ordering. The search then arranges the remaining
 rings. The table above was computed without these two constraints, and with

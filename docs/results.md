@@ -1,28 +1,22 @@
-# First prototype: method and comparison
+# Results
 
-This note reports the first prototype of MCCP and its comparison with
-established palettes and palette generators. The design is given in the
-README. All results come from `bench/compare.py`, `bench/robustness.py` and
-`bench/large_n.py`, run on 2026-11-22.
+This note reports comparisons of MCCP with established palettes and palette
+generators. Section 3 concerns the standard mode, MCCP's first form, which
+designs for normal vision with a single lightness limit. Section 4 concerns
+the sRGB mode, now the default. The formulation is given in
+[design.md](design.md). All results come from the scripts in `bench/`, run
+on 2026-11-22.
 
-## 1. What was built
+## 1. The two modes
 
-The prototype (package `mccp`) implements Sections 2 and 3 of the README:
+Both modes use the same transform, observers and method
+([design.md](design.md)). They differ in three respects:
 
-- the CAM16-UCS transform with flare, which agrees with colour-science to
-  10⁻⁶ over 27 combinations of viewing conditions;
-- simulation of deficient colour vision by the matrices of Machado et al.
-  (2009);
-- anchors, radii, fixed members and the one-sided background lightness
-  condition;
-- the four-stage method: farthest-point selection with a swap search,
-  soft-minimum refinement, polish by sequential linear programming, and
-  spreading by the sum of each colour's soft minimum;
-- rounding to 8-bit values, followed by a search of single steps that
-  restores the constraints and recovers most of the separation lost.
-
-Warm starts from a palette for a nearby N, the matplotlib helpers, and
-viewing presets other than "screen" are not yet implemented.
+| | Standard mode | sRGB mode (default) |
+|---|---|---|
+| Lightness weight $K_L$ | 1 | 0.77 |
+| Lightness limits | one limit from the background, $\Delta J'_b = 25$ | limits by hue, measured by eye ([calibration.md](calibration.md)) |
+| Simulated observers | none unless requested | deutan and protan at priority 0.6, tritan at 0.2 |
 
 ## 2. Protocol
 
@@ -54,7 +48,7 @@ Python interface (qualpal-py 1.1.0) returned identical palettes with and
 without its `cvd` option in our tests, and so was not used for this
 comparison.
 
-## 3. Results
+## 3. The standard mode
 
 ![Least pairwise distance against N](img/bench_metrics.png)
 
@@ -141,7 +135,7 @@ second pass, on charts drawn relative to the first estimates, corrected the
 dark side. These limits, interpolated around the hue circle, replace the
 single background lightness condition.
 
-The resulting "sRGB" mode is the default on white backgrounds. It also
+The resulting "sRGB" mode is now the default. It also
 includes simulated deutan and protan observers at priority 0.6, and tritan
 at 0.2: each pair must be at least that fraction as far apart for the
 simulated observer as the common spacing requires.
@@ -158,33 +152,58 @@ between 0.02 and 0.13 of it for N of 8 and above. The observer preferred the
 default palettes to those for normal vision alone
 ([figure](img/mccp10_srgb_cvd.png)).
 
-These results rest on the judgements of one observer on one display, and
-the hue limits are calibrated for a white background only.
+The default palettes compared with the other programs, N from 3 to 30
+(median ratio over N, and the number of values of N at which MCCP is
+ahead):
+
+| Default MCCP divided by | Own measure (lightness-weighted) | OKLab | CAM02-UCS | CIEDE2000 | Deutan 1 |
+|---|---|---|---|---|---|
+| glasbey | 1.14 (12/14) | 0.85 (3/14) | 0.79 (1/14) | 1.15 (8/14) | 4.4 (14/14) |
+| glasbey, matched | 1.12 (13/14) | 0.97 (6/14) | 0.81 (1/14) | 1.02 (9/14) | 7.6 (14/14) |
+| Qualpal | 1.31 (13/14) | 1.16 (12/14) | 1.00 (7/14) | 0.66 (0/14) | 4.2 (12/14) |
+| Qualpal, matched | 1.15 (14/14) | 1.13 (12/14) | 0.97 (5/14) | 0.69 (0/14) | 5.4 (14/14) |
+| glasbey, colour-blind safe (protan) | 1.53 (9/9) | 1.27 (9/9) | 1.38 (9/9) | 1.30 (9/9) | 1.2 (8/9) |
+
+glasbey and Qualpal design for normal vision alone. Against them, the default
+gives up some separation in the measures they optimise, and gains a factor
+of four to eight for deuteranopes. Against glasbey's colour-blind-safe mode,
+which guards one deficiency at a time (N up to 12), it is ahead in nearly
+every measure.
+
+These results rest on the judgements of one observer on one display. The
+lightness limits are calibrated on white, black and #333333, and
+interpolated for other backgrounds.
 
 ## 5. Limitations
 
-The comparison shows separation under models of colour difference, not
+The comparisons show separation under models of colour difference, not
 perceptual superiority. No measure has been validated for differences of
-the size found between palette colours, and no observer study has been made.
+the size found between palette colours, and no study of readers has been
+made.
 
-The default palettes reach the boundaries of the sRGB gamut and the
-background condition. Their least contrast ratio with white is 1.9, below the
-3 to 1 that WCAG 2.1 asks for graphical objects. At N = 7, 8 and 10 they
-contain a dark and a bright green, which a reader would call by the same name
-([figure](img/mccp10.png); compare [tab10](img/tab10.png)). The colours are
-highly saturated. Running time (2 to 20 s for N ≤ 30)
-rules out computing palettes interactively without a cache.
+In the standard mode, palettes reach the boundaries of the sRGB gamut and of
+the background condition. At N = 7, 8 and 10 they contain a dark and a bright
+green, which a reader would call by the same name
+([figure](img/mccp10.png); compare [tab10](img/tab10.png)). The sRGB mode
+removed these faults in the observer's judgement, but admits colours of low
+luminance contrast with the background, down to a contrast ratio of 1.3 on
+white.
+
+Computing a palette takes from a few seconds to about a minute for N up to
+30. Palettes with default settings are therefore precomputed for N from 1 to
+50 on the calibrated backgrounds.
 
 ## 6. Next steps
 
 In order of cost:
 
-1. Constrain appearance: a chroma ceiling, or distinct colour names (Heer and
-   Stone 2012). Measure what each costs in separation.
-2. Make the comparisons more robust: several seeds, and glasbey at N = 40 to
-   100.
-3. Run a small observer study. About 10 to 20 people would match thin lines
-   and small markers to legend entries at N = 8 and 16, using palettes from
-   MCCP, the matched generators, and tab10 or petroff10. Record errors, time
-   and preference. Only such a study can say whether the larger separations
-   matter.
+1. Calibrate a mid-grey background, with charts that find both edges of the
+   band around the background.
+2. Repeat the calibration with other observers and displays.
+3. Test distinct colour names (Heer and Stone 2012) as part of the measure of
+   difference, and ellipsoidal radii for different kinds of mark (Szafir
+   2018).
+4. Run a small study of readers. About 10 to 20 people would match thin
+   lines and small markers to legend entries at N = 8 and 16, using palettes
+   from MCCP, glasbey, Qualpal and tab10. Record errors, time and preference.
+   Only such a study can show whether the larger separations matter.
