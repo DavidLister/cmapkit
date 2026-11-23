@@ -1,6 +1,6 @@
 [project]
 name = "mccp"  # placeholder: "mccp" is taken on PyPI; to be decided before release
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Colour palettes for categorical plots with the closest pair as distinct as possible, including for colour-blind readers"
 readme = "README.md"
 license = "MIT"
@@ -29,6 +29,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["mccp"]
+
+[tool.setuptools.dynamic]
+version = {attr = "mccp.__version__"}
 
 [tool.setuptools.package-data]
 mccp = ["data/*.json"]

@@ -21,7 +21,7 @@ from scipy.sparse import coo_matrix
 from .space import Observer, Space, hex_to_rgb, relative_luminance, rgb_to_hex, to_hex, viewing
 
 
-@dataclass
+@dataclass(frozen=True)
 class Anchor:
     """A fixed colour that chosen colours must keep clear of.
 
@@ -552,9 +552,10 @@ def solve_power(prob, p, starts=8, seed=0, grid=24):
     return best, log
 
 
-def round_repair(prob, rgb, sweeps=4, p=np.inf):
+def round_repair(prob, rgb, sweeps=100, p=np.inf):
     """Round to 8-bit values, then move single colours by one step in each
-    channel while this reduces the violation or raises the least distance."""
+    channel while this reduces the violation or raises the least distance,
+    sweeping until a sweep brings no gain."""
     x = np.round(np.clip(rgb, 0, 1) * 255)
     steps = np.array([(a, b, c) for a in (-1, 0, 1) for b in (-1, 0, 1) for c in (-1, 0, 1)
                       if (a, b, c) != (0, 0, 0)])
@@ -580,6 +581,10 @@ def round_repair(prob, rgb, sweeps=4, p=np.inf):
                 improved = True
         if not improved:
             break
+    if cur[0] < 0:
+        import warnings
+        warnings.warn(f"Rounding to 8-bit values left a violation of {-cur[0]:.3g} "
+                      "(CAM16-UCS units).", stacklevel=3)
     return x / 255
 
 
@@ -669,6 +674,8 @@ class Palette:
 # about 0.88 of the normal-vision spacing.
 SRGB_OBSERVERS = (Observer("deutan", 1.0, 0.6), Observer("protan", 1.0, 0.6),
                   Observer("tritan", 1.0, 0.2))
+# Clearances of the 'srgb' mode's default anchors: background, then text.
+SRGB_CLEARANCE = (20.0, 15.0)
 
 
 def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
@@ -685,8 +692,8 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
         bounds = "srgb"
         if anchors is None:
             light_bg = relative_luminance(hex_to_rgb(background))[0] > 0.18
-            anchors = [Anchor(background, 20.0),
-                       Anchor("#000000" if light_bg else "#ffffff", 15.0)]
+            anchors = [Anchor(background, SRGB_CLEARANCE[0]),
+                       Anchor("#000000" if light_bg else "#ffffff", SRGB_CLEARANCE[1])]
         if observers is None:
             observers = SRGB_OBSERVERS
     elif mode is not None:
@@ -696,8 +703,8 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
     obs = (Observer(),) + tuple(Observer(*o) if isinstance(o, tuple) else o for o in observers)
     space = Space(view, obs)
     anchors = default_anchors(background) if anchors is None else anchors
+    anchors = [Anchor(to_hex(a.colour), a.clearance, a.lightness) for a in anchors]
     for a in anchors:
-        a.colour = to_hex(a.colour)
         if a.clearance < 0 or (a.lightness is not None and a.lightness < 0):
             raise ValueError("Anchor clearances must be non-negative.")
     radii = np.ones(n) if radii is None else np.asarray(radii, float)
@@ -815,17 +822,46 @@ def cache_settings():
                 lightness_weight=None, power="inf")
 
 
+# Raise when a change to the optimiser alters the palettes it produces.
+ALGORITHM_REVISION = 2
+
+
+def cache_fingerprint():
+    """Hash of everything that determines a precomputed palette."""
+    import dataclasses
+    import hashlib
+    import json
+    from .bounds import SRGB_BOUNDS
+    from .space import PRESETS
+    payload = dict(revision=ALGORITHM_REVISION, settings=cache_settings(),
+                   bounds={k: dataclasses.asdict(v) for k, v in sorted(SRGB_BOUNDS.items())},
+                   observers=[dataclasses.asdict(o) for o in SRGB_OBSERVERS],
+                   clearance=SRGB_CLEARANCE, preset=PRESETS["screen"], feas_tol=FEAS_TOL)
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
+
+
 def _load_cache():
     global _CACHE
     if _CACHE is None:
         import json
         import os
+        import warnings
         path = os.path.join(os.path.dirname(__file__), "data", "palettes.json")
+        _CACHE = {}
         try:
             with open(path) as f:
-                _CACHE = json.load(f)
+                data = json.load(f)
         except FileNotFoundError:
-            _CACHE = {}
+            return _CACHE
+        except (OSError, ValueError) as exc:
+            warnings.warn(f"Precomputed palettes could not be read ({exc}); "
+                          "palettes will be computed.", stacklevel=3)
+            return _CACHE
+        if data.get("fingerprint") != cache_fingerprint():
+            warnings.warn("Precomputed palettes are out of date and will not be used; "
+                          "palettes will be computed.", stacklevel=3)
+            return _CACHE
+        _CACHE = data
     return _CACHE
 
 
@@ -833,14 +869,10 @@ def _from_cache(n, background, anchors, radii, observers, preset, fixed, fixed_r
                 seed, grid, ucs, lightness_weight, mode, power):
     """Hex colours of a precomputed palette, or None if the arguments are not
     all at the defaults for which palettes were precomputed."""
-    from . import __version__
     if (anchors is not None or radii is not None or observers is not None or fixed
             or fixed_radii is not None or preset != "screen" or starts != 8 or seed != 0
             or grid != 24 or ucs != "UCS" or lightness_weight is not None or mode != "srgb"
             or np.isfinite(power)):
         return None
-    cache = _load_cache()
-    if cache.get("version") != __version__:
-        return None
-    entry = cache.get("palettes", {}).get(to_hex(background), {}).get(str(n))
+    entry = _load_cache().get("palettes", {}).get(to_hex(background), {}).get(str(n))
     return entry["hex"] if entry else None
