@@ -1,7 +1,7 @@
 # The ring figure
 
 This note describes the disc used to inspect palettes. It is drawn by
-`mccp.figures.report_figure`.
+`cmapkit.mccp.figures.report_figure`.
 
 ## 1. Layout
 
@@ -40,7 +40,7 @@ the bound of equation (1) until a search reaches zero shortfall.
 The search uses fixed seeds, so the same palette always gives the same
 figure.
 
-The search is `ring_layout` in `mccp/figures.py`. The table gives the
+The search is `ring_layout` in `cmapkit/mccp/figures.py`. The table gives the
 smallest R found in preliminary searches (three seeds of 150 000 steps each,
 for each R). These values are not proved minimal.
 

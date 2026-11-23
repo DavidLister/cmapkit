@@ -4,12 +4,12 @@ from importlib import resources
 
 import pytest
 
-import mccp
-from mccp import optimise as opt
+import cmapkit
+from cmapkit.mccp import optimise as opt
 
 
 def _table():
-    with resources.files("mccp").joinpath("data/palettes.json").open() as f:
+    with resources.files("cmapkit.mccp").joinpath("data/palettes.json").open() as f:
         return json.load(f)
 
 
@@ -24,7 +24,7 @@ def test_table_is_packaged_current_and_complete():
 
 def test_default_palette_comes_from_table():
     t = time.time()
-    p = mccp.palette(12, background="black")
+    p = cmapkit.palette(12, background="black")
     assert time.time() - t < 2.0
     assert p.diagnostics["log"] == {"source": "precomputed"}
     assert p.hex == _table()["palettes"]["#000000"]["12"]["hex"]
@@ -32,7 +32,7 @@ def test_default_palette_comes_from_table():
 
 
 def test_non_default_arguments_bypass_table():
-    p = mccp.palette(3, observers=[], starts=2, grid=12)
+    p = cmapkit.palette(3, observers=[], starts=2, grid=12)
     assert p.diagnostics["log"] != {"source": "precomputed"}
 
 
@@ -49,6 +49,6 @@ def test_stale_table_is_refused(monkeypatch):
 def test_recomputed_palette_matches_table():
     """The table was made on one platform; elsewhere results may differ
     slightly, so the least distance is compared rather than the colours."""
-    stored = mccp.palette(4)
-    fresh = mccp.palette(4, use_cache=False)
+    stored = cmapkit.palette(4)
+    fresh = cmapkit.palette(4, use_cache=False)
     assert fresh.min_distance == pytest.approx(stored.min_distance, rel=0.01)

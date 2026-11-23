@@ -1,9 +1,9 @@
 """Precompute default palettes for the calibrated backgrounds.
 
-Writes mccp/data/palettes.json. Each entry is the result of
-mccp.palette(n, background=bg) with every other argument at its default.
+Writes cmapkit/mccp/data/palettes.json. Each entry is the result of
+cmapkit.palette(n, background=bg) with every other argument at its default.
 The file carries a fingerprint of everything that determines the palettes;
-mccp ignores it if the fingerprint no longer matches.
+cmapkit ignores it if the fingerprint no longer matches.
 
 The run can be interrupted and resumed: finished entries are kept in
 palettes.json.partial. Entries from a run with fewer rounding-repair sweeps
@@ -20,7 +20,7 @@ import time
 from multiprocessing import Pool
 
 BACKGROUNDS = ["#ffffff", "#000000", "#333333"]
-OUT = os.path.join(os.path.dirname(__file__), "..", "mccp", "data", "palettes.json")
+OUT = os.path.join(os.path.dirname(__file__), "..", "cmapkit", "mccp", "data", "palettes.json")
 
 
 def _entry(p, seconds):
@@ -31,17 +31,17 @@ def _entry(p, seconds):
 
 def compute(args):
     bg, n = args
-    import mccp
+    import cmapkit
     t = time.time()
-    p = mccp.palette(n, background=bg, use_cache=False)
+    p = cmapkit.palette(n, background=bg, use_cache=False)
     return bg, n, _entry(p, time.time() - t)
 
 
 def repair(args):
     bg, n, hexes = args
-    import mccp
-    from mccp import optimise as opt
-    from mccp.space import hex_to_rgb, rgb_to_hex
+    import cmapkit
+    from cmapkit.mccp import optimise as opt
+    from cmapkit.space import hex_to_rgb, rgb_to_hex
     t = time.time()
     prob = opt.make_problem(n, bg, mode="srgb")
     rgb = hex_to_rgb(hexes)
@@ -49,15 +49,15 @@ def repair(args):
     if n > 1:
         rgb = opt.round_repair(prob, rgb)
     diag = opt.diagnose(prob, rgb)
-    p = mccp.Palette(rgb_to_hex(rgb), rgb, diag["min_distance"], diag["scale"], diag)
+    p = cmapkit.Palette(rgb_to_hex(rgb), rgb, diag["min_distance"], diag["scale"], diag)
     return bg, n, _entry(p, time.time() - t)
 
 
 def main(max_n=50, workers=4):
-    import mccp
-    from mccp.optimise import cache_fingerprint, cache_settings
+    import cmapkit
+    from cmapkit.mccp.optimise import cache_fingerprint, cache_settings
     fp = cache_fingerprint()
-    out = dict(version=mccp.__version__, fingerprint=fp, settings=cache_settings(),
+    out = dict(version=cmapkit.__version__, fingerprint=fp, settings=cache_settings(),
                palettes={bg: {} for bg in BACKGROUNDS})
     old = {}
     if os.path.exists(OUT + ".partial"):

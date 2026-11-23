@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 import pytest
 
-from mccp.figures import ring_layout
+from cmapkit.mccp.figures import ring_layout
 
 
 def drawn_contacts(grid):

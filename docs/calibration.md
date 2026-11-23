@@ -30,7 +30,7 @@ row, twelve columns span the CAM16 hue circle at 30° intervals. Each colour
 is drawn as a thin line, a thick line, small markers and a patch. Each
 lightness appears twice: at the strongest colourfulness sRGB allows at that
 lightness and hue ("full"), and at half of it ("half"). The judgements used
-the full rows. The charts are made by `mccp.calibrate.lightness_page`.
+the full rows. The charts are made by `cmapkit.calibrate.lightness_page`.
 
 ![A chart for the light side on white, with rows relative to the measured limits](img/calib_white_light_rel.png)
 
@@ -44,7 +44,7 @@ For each background, the observer judged two charts:
 The white background was judged twice. On the first charts the dark side did
 not reach far enough to find the limit for several hues. The second pass used
 charts with rows placed relative to the first estimates
-(`mccp.calibrate.bounds_page`, shown above for the light side) and found
+(`cmapkit.calibrate.bounds_page`, shown above for the light side) and found
 those limits.
 
 ## 3. Values
@@ -98,14 +98,14 @@ of the band.
 ## 5. Calibrating another display or background
 
 ```python
-from mccp.calibrate import lightness_page
+from cmapkit.calibrate import lightness_page
 
 lightness_page("high", background="#ffffff", text="#000000", path="light.png")
 lightness_page("low", background="#ffffff", text="#000000", path="dark.png")
 ```
 
 Judge each chart as in Section 2, one row per column, using the full rows.
-The values form a `mccp.bounds.HueBounds` table. There is at present no
+The values form a `cmapkit.bounds.HueBounds` table. There is at present no
 argument for supplying a calibration: adding one means editing `SRGB_BOUNDS`
-and `bounds_for` in `mccp/bounds.py`, which combines the tables for white,
+and `bounds_for` in `cmapkit/bounds.py`, which combines the tables for white,
 black and #333333 only.

@@ -1,7 +1,7 @@
 [project]
-name = "mccp"  # placeholder: "mccp" is taken on PyPI; to be decided before release
+name = "cmapkit"
 dynamic = ["version"]
-description = "Colour palettes for categorical plots with the closest pair as distinct as possible, including for colour-blind readers"
+description = "Colour maps designed in CAM16-UCS, beginning with categorical palettes whose closest pair is as distinct as possible, including for colour-blind readers"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "NOTICE"]
@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/DavidLister/MCCP"
+Repository = "https://github.com/DavidLister/cmapkit"
 
 [project.optional-dependencies]
 matplotlib = ["matplotlib>=3.7"]
@@ -28,13 +28,13 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["mccp"]
+packages = ["cmapkit", "cmapkit.mccp"]
 
 [tool.setuptools.dynamic]
-version = {attr = "mccp.__version__"}
+version = {attr = "cmapkit.__version__"}
 
 [tool.setuptools.package-data]
-mccp = ["data/*.json"]
+"cmapkit.mccp" = ["data/*.json"]
 
 [tool.pytest.ini_options]
 markers = ["slow: takes more than a few seconds (ring layout search)"]

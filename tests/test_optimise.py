@@ -1,23 +1,23 @@
 import numpy as np
 import pytest
 
-import mccp
-from mccp import optimise as opt
-from mccp.order import distance_matrix, groups, path_order
-from mccp.space import Space, viewing
+import cmapkit
+from cmapkit.mccp import optimise as opt
+from cmapkit.mccp.order import distance_matrix, groups, path_order
+from cmapkit.space import Space, viewing
 
 FAST = dict(starts=2, grid=12, mode="standard")
 
 
 def test_empty_and_single():
-    assert len(mccp.palette(0)) == 0
-    p = mccp.palette(1, **FAST)
+    assert len(cmapkit.palette(0)) == 0
+    p = cmapkit.palette(1, **FAST)
     assert len(p) == 1 and p.diagnostics["max_violation"] <= 1e-6
 
 
 def test_constraints_hold_and_deterministic():
-    a = mccp.palette(5, **FAST)
-    b = mccp.palette(5, **FAST)
+    a = cmapkit.palette(5, **FAST)
+    b = cmapkit.palette(5, **FAST)
     assert a.hex == b.hex
     assert a.diagnostics["max_violation"] < 1e-6
     assert min(a.diagnostics["background_lightness_difference"]) >= 25 - 1e-4
@@ -35,19 +35,19 @@ def test_polish_does_not_lose_to_start():
 
 def test_fixed_members_count_in_spacing():
     fixed = ["#1f77b4", "#ff7f0e"]
-    p = mccp.palette(3, fixed=fixed, **FAST)
+    p = cmapkit.palette(3, fixed=fixed, **FAST)
     assert p.diagnostics["scale"] > 5
     assert not set(p.hex) & set(fixed)
 
 
 def test_impossible_anchors_raise():
-    anchors = [mccp.Anchor("#ffffff", 200.0, 25.0)]
+    anchors = [cmapkit.Anchor("#ffffff", 200.0, 25.0)]
     with pytest.raises(ValueError):
-        mccp.palette(3, anchors=anchors, **FAST)
+        cmapkit.palette(3, anchors=anchors, **FAST)
 
 
 def test_radius_reserves_room():
-    p = mccp.palette(4, radii=[2, 1, 1, 1], **FAST)
+    p = cmapkit.palette(4, radii=[2, 1, 1, 1], **FAST)
     u = Space(viewing()).coords(p.rgb)[0]
     d = np.linalg.norm(u[:, None] - u[None], axis=-1)
     s = p.diagnostics["scale"]
@@ -72,50 +72,50 @@ def test_orderings():
 
 def test_unequal_radii_give_feasible_palette():
     for radii in ([1.8, 1.8, 1, 1, 1, 1], [0.5, 1, 1, 1, 1, 1]):
-        p = mccp.palette(6, radii=radii, **FAST)
+        p = cmapkit.palette(6, radii=radii, **FAST)
         assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 
 def test_impossible_radius_raises():
     with pytest.raises(ValueError):
-        mccp.palette(4, radii=[3, 1, 1, 1], **FAST)
+        cmapkit.palette(4, radii=[3, 1, 1, 1], **FAST)
 
 
 def test_order_with_unequal_radii_refused():
     with pytest.raises(ValueError):
-        mccp.palette(4, radii=[2.5, 1, 1, 1], order="contrasting", **FAST)
+        cmapkit.palette(4, radii=[2.5, 1, 1, 1], order="contrasting", **FAST)
 
 
 def test_returned_colours_are_feasible_after_rounding():
-    p = mccp.palette(8, **FAST)
+    p = cmapkit.palette(8, **FAST)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
     assert min(p.diagnostics["background_lightness_difference"]) >= 25 - opt.FEAS_TOL
 
 
 @pytest.mark.parametrize("bg", ["#fff", "white", (1.0, 1.0, 1.0)])
 def test_background_forms(bg):
-    assert len(mccp.palette(3, background=bg, **FAST)) == 3
+    assert len(cmapkit.palette(3, background=bg, **FAST)) == 3
 
 
 @pytest.mark.parametrize("bad", [dict(radii=[1, 0, 1]), dict(radii=[1, 1]),
-                                 dict(anchors=[mccp.Anchor("#ffffff", -1.0)])])
+                                 dict(anchors=[cmapkit.Anchor("#ffffff", -1.0)])])
 def test_bad_inputs_raise(bad):
     with pytest.raises(ValueError):
-        mccp.palette(3, **bad, **FAST)
+        cmapkit.palette(3, **bad, **FAST)
 
 
 def test_srgb_mode_respects_hue_bounds():
-    from mccp.bounds import SRGB_WHITE
-    p = mccp.palette(6, mode="srgb", starts=2, grid=12)
+    from cmapkit.bounds import SRGB_WHITE
+    p = cmapkit.palette(6, mode="srgb", starts=2, grid=12)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
     assert min(p.diagnostics["lightness_bound_slack"]) >= -opt.FEAS_TOL
-    q = mccp.palette(3, mode="srgb", background="#202020", starts=2, grid=12)
+    q = cmapkit.palette(3, mode="srgb", background="#202020", starts=2, grid=12)
     assert "interpolated" in q.diagnostics["bounds"]
     assert q.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 
 def test_hue_bounds_interpolate_and_blend():
-    from mccp.bounds import SRGB_WHITE as B
+    from cmapkit.bounds import SRGB_WHITE as B
     u = np.array([[0.0, 30.0, 0.0], [0.0, 0.0, 0.0]])  # hue 0 at chroma 30, and grey
     jmin, jmax = B.limits(u)
     assert jmax[0] == pytest.approx(70) and jmin[0] == pytest.approx(35)
@@ -123,9 +123,9 @@ def test_hue_bounds_interpolate_and_blend():
 
 
 def test_observer_priority_trades_normal_for_cvd():
-    from mccp.space import Observer
-    full = mccp.palette(5, observers=[Observer("deutan", 1.0, 1.0)], **FAST)
-    part = mccp.palette(5, observers=[Observer("deutan", 1.0, 0.4)], **FAST)
+    from cmapkit.space import Observer
+    full = cmapkit.palette(5, observers=[Observer("deutan", 1.0, 1.0)], **FAST)
+    part = cmapkit.palette(5, observers=[Observer("deutan", 1.0, 0.4)], **FAST)
     n_full = full.diagnostics["scale_by_observer"]["normal"]
     n_part = part.diagnostics["scale_by_observer"]["normal"]
     assert n_part >= n_full - 1e-6
@@ -133,20 +133,20 @@ def test_observer_priority_trades_normal_for_cvd():
 
 def test_power_objective_runs_and_is_feasible():
     with pytest.warns(UserWarning, match="experimental"):
-        p = mccp.palette(5, power=3.0, **FAST)
+        p = cmapkit.palette(5, power=3.0, **FAST)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 
 def test_default_mode_is_srgb_everywhere():
-    p = mccp.palette(4, starts=2, grid=12)
+    p = cmapkit.palette(4, starts=2, grid=12)
     assert "lightness_bound_slack" in p.diagnostics
     assert any("deutan" in k for k in p.diagnostics["scale_by_observer"])
-    q = mccp.palette(4, background="#202020", starts=2, grid=12)
+    q = cmapkit.palette(4, background="#202020", starts=2, grid=12)
     assert "lightness_bound_slack" in q.diagnostics
 
 
 def test_band_bounds_reproduce_calibrations_and_exclude_background():
-    from mccp.bounds import SRGB_BOUNDS, bounds_for
+    from cmapkit.bounds import SRGB_BOUNDS, bounds_for
     for bg, tab in SRGB_BOUNDS.items():
         b = bounds_for(bg)
         for k, hdeg in enumerate(tab.hues):
@@ -161,9 +161,9 @@ def test_band_bounds_reproduce_calibrations_and_exclude_background():
 
 
 def test_anchors_add_to_defaults_and_min_distance_is_normal_vision():
-    p = mccp.palette(3, anchors=[mccp.Anchor("#ff0000", 10.0)], starts=2, grid=12)
+    p = cmapkit.palette(3, anchors=[cmapkit.Anchor("#ff0000", 10.0)], starts=2, grid=12)
     assert set(p.diagnostics["anchor_distance"]) == {"#ffffff", "#000000", "#ff0000"}
-    q = mccp.palette(3, anchors=[mccp.Anchor("#ff0000", 10.0)], replace_anchors=True,
+    q = cmapkit.palette(3, anchors=[cmapkit.Anchor("#ff0000", 10.0)], replace_anchors=True,
                      starts=2, grid=12)
     assert set(q.diagnostics["anchor_distance"]) == {"#ff0000"}
     by = p.diagnostics["min_distance_by_observer"]
@@ -172,4 +172,4 @@ def test_anchors_add_to_defaults_and_min_distance_is_normal_vision():
 
 def test_interpolated_mid_grey_warns():
     with pytest.warns(UserWarning, match="interpolated"):
-        mccp.palette(3, background="#808080", starts=2, grid=12)
+        cmapkit.palette(3, background="#808080", starts=2, grid=12)

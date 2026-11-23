@@ -9,8 +9,8 @@ import time
 
 import numpy as np
 
-import mccp
-from mccp.space import Observer, Space, hex_to_rgb, viewing
+import cmapkit
+from cmapkit.space import Observer, Space, hex_to_rgb, viewing
 
 REPORT = Space(viewing(lightness_weight=0.77),
                (Observer(), Observer("deutan", 1.0), Observer("protan", 1.0)))
@@ -43,7 +43,7 @@ def main(path):
     out = []
     for name, n, p, obs in CONFIGS:
         t = time.time()
-        pal = mccp.palette(n, mode="srgb", observers=obs, power=p, order="similar")
+        pal = cmapkit.palette(n, mode="srgb", observers=obs, power=p, order="similar")
         out.append(dict(name=name, n=n, p=p if np.isfinite(p) else "inf", colours=pal.hex,
                         seconds=time.time() - t, **profile(pal.hex)))
         r = out[-1]

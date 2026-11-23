@@ -18,8 +18,8 @@ import numpy as np
 from scipy.optimize import linprog, minimize
 from scipy.sparse import coo_matrix
 
-from .bounds import _lstar
-from .space import Observer, Space, hex_to_rgb, relative_luminance, rgb_to_hex, to_hex, viewing
+from ..bounds import _lstar
+from ..space import Observer, Space, hex_to_rgb, relative_luminance, rgb_to_hex, to_hex, viewing
 
 
 @dataclass(frozen=True)
@@ -723,7 +723,7 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
     if fixed_radii.shape != (len(fixed),) or np.any(fixed_radii <= 0):
         raise ValueError("fixed_radii must be positive, one per fixed colour.")
     if bounds == "srgb":
-        from .bounds import bounds_for
+        from ..bounds import bounds_for
         j_bg = float(space.ucs(hex_to_rgb(background))[0, 0]) * space.ucs.K_L
         bounds = bounds_for(background, j_bg)
         if "interpolated" in bounds.source and 25 < _lstar(background) < 90:
@@ -853,8 +853,8 @@ def cache_fingerprint():
     import dataclasses
     import hashlib
     import json
-    from .bounds import SRGB_BOUNDS
-    from .space import PRESETS
+    from ..bounds import SRGB_BOUNDS
+    from ..space import PRESETS
     payload = dict(revision=ALGORITHM_REVISION, settings=cache_settings(),
                    bounds={k: dataclasses.asdict(v) for k, v in sorted(SRGB_BOUNDS.items())},
                    observers=[dataclasses.asdict(o) for o in SRGB_OBSERVERS],

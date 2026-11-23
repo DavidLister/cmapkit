@@ -4,7 +4,7 @@ matplotlib is imported only when these functions are called, so the rest of
 the package does not depend on it.
 """
 
-from .optimise import palette
+from .mccp.optimise import palette
 
 
 def _opaque_hex(colour):
@@ -39,7 +39,7 @@ def _background(ax=None):
 
 def cycler(n, **kwargs):
     """A matplotlib cycler of n MCCP colours. Keyword arguments go to
-    mccp.palette; the background defaults to the current style's axes
+    cmapkit.palette; the background defaults to the current style's axes
     colour."""
     from cycler import cycler as _cycler
     kwargs.setdefault("background", _background())

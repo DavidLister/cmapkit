@@ -28,9 +28,9 @@ import numpy as np
 import glasbey
 import qualpal
 
-import mccp
-from mccp import optimise as opt
-from mccp.space import (CAM16UCS, Observer, Space, contrast_ratio, hex_to_rgb, rgb_to_hex,
+import cmapkit
+from cmapkit.mccp import optimise as opt
+from cmapkit.space import (CAM16UCS, Observer, Space, contrast_ratio, hex_to_rgb, rgb_to_hex,
                         srgb_to_linear, viewing)
 
 NS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 25, 30]
@@ -75,7 +75,7 @@ def score(hexes):
     uw = spw.coords(rgb)
     for o, name in enumerate(["normal"] + [str(x) for x in OBSERVERS]):
         out[f"cam16w {name}"] = float(_pairwise_min(uw[o])[0])
-    from mccp.bounds import SRGB_WHITE
+    from cmapkit.bounds import SRGB_WHITE
     out["srgb bound violations"] = int(np.sum(SRGB_WHITE.slack(u[0], 1.0).min(axis=0) < -0.25))
     d = _pairwise_min(u[0])
     out["cam16 2nd"] = float(d[1]) if len(d) > 1 else float("nan")
@@ -123,18 +123,18 @@ def matched_candidates():
 def generators(n, cand_hex):
     out = {}
     t = time.time()
-    p = mccp.palette(n, background=BG, mode="standard")
+    p = cmapkit.palette(n, background=BG, mode="standard")
     out["mccp"] = (p.hex, time.time() - t)
     if n <= 12:
         t = time.time()
-        p = mccp.palette(n, background=BG, mode="standard",
+        p = cmapkit.palette(n, background=BG, mode="standard",
                          observers=[("deutan", 1.0), ("protan", 1.0)])
         out["mccp-cvd"] = (p.hex, time.time() - t)
     t = time.time()
-    p = mccp.palette(n, background=BG, mode="srgb", observers=())
+    p = cmapkit.palette(n, background=BG, mode="srgb", observers=())
     out["mccp-srgb"] = (p.hex, time.time() - t)
     t = time.time()
-    p = mccp.palette(n, background=BG, mode="srgb")
+    p = cmapkit.palette(n, background=BG, mode="srgb")
     out["mccp-srgb-cvd"] = (p.hex, time.time() - t)
     for stage in ("greedy", "swap"):
         t = time.time()
@@ -181,8 +181,8 @@ def main(path):
     # MCCP within each fixed palette's own lightness envelope, at its full size.
     for name, pal in FIXED.items():
         env = score(pal)["bg dJ min"]
-        anchors = mccp.default_anchors(BG, background_lightness=max(env, 0.0))
-        p = mccp.palette(len(pal), background=BG, anchors=anchors, mode="standard")
+        anchors = cmapkit.default_anchors(BG, background_lightness=max(env, 0.0))
+        p = cmapkit.palette(len(pal), background=BG, anchors=anchors, mode="standard")
         results.append(dict(source=f"mccp-envelope:{name}", kind="generated", n=len(pal),
                             colours=p.hex, envelope=env, **score(p.hex)))
     with open(path, "w") as f:

@@ -10,7 +10,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from mccp.space import CAM16UCS, Viewing, hex_to_rgb
+from cmapkit.space import CAM16UCS, Viewing, hex_to_rgb
 
 SETTINGS = {
     "screen (MCCP default)": Viewing(80, 100, "dim", 0.01),

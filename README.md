@@ -1,37 +1,40 @@
-# MCCP: Maximum Contrast Colour Picking
+# cmapkit
 
-MCCP chooses the colours of a categorical plot. Given the number of data
-series N, it chooses N colours so that the two least distinct colours are as
-distinct as its optimiser can make them. The colours are chosen for that N
-and for the background of the plot. They are also kept apart for readers
-with the common deficiencies of colour vision, to a stated fraction of the
-separation that normal vision receives. MCCP works with matplotlib.
+cmapkit is a Python package for designing colour maps in CAM16-UCS, a colour
+space in which equal distances look equally different. Version 0.1 contains
+one method, MCCP (maximum contrast colour picking), which chooses the colours
+of a categorical plot. Given the number of data series N, it chooses N
+colours so that the two least distinct colours are as distinct as its
+optimiser can make them. The colours are chosen for that N and for the
+background of the plot. They are also kept apart for readers with the common
+deficiencies of colour vision, to a stated fraction of the separation that
+normal vision receives. cmapkit works with matplotlib.
 
 The package is at the alpha stage (version 0.1.0.dev0), and its interface
 may change.
 
-![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](https://raw.githubusercontent.com/DavidLister/MCCP/main/docs/img/srgb_palettes.png)
+![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/srgb_palettes.png)
 
 ## 1. Installation
 
 ```
-pip install git+https://github.com/DavidLister/MCCP
+pip install git+https://github.com/DavidLister/cmapkit
 ```
 
-MCCP requires numpy and scipy. The matplotlib helpers also require
+cmapkit requires numpy and scipy. The matplotlib helpers also require
 matplotlib.
 
 ## 2. Use
 
 ```python
-import mccp
+import cmapkit
 
-pal = mccp.palette(8)                          # eight colours for a white background
+pal = cmapkit.palette(8)                       # eight colours for a white background
 pal.hex                                        # ['#...', ...]
 pal.min_distance                               # least distance between two colours
 
-mccp.palette(8, background="#000000")          # for a black background
-mccp.palette(8, order="contrasting")           # neighbours as different as possible
+cmapkit.palette(8, background="#000000")       # for a black background
+cmapkit.palette(8, order="contrasting")        # neighbours as different as possible
 ```
 
 With matplotlib:
@@ -39,13 +42,13 @@ With matplotlib:
 ```python
 import matplotlib.pyplot as plt
 
-mccp.use(8)                    # colour cycle for figures drawn from now on
+cmapkit.use(8)                 # colour cycle for figures drawn from now on
 
 fig, ax = plt.subplots()
 for y in data:
     ax.plot(y, label=...)
 ax.legend()
-mccp.recolor(ax)               # recolour the series already drawn, and the legend
+cmapkit.recolor(ax)            # recolour the series already drawn, and the legend
 ```
 
 `use` takes the background from the current matplotlib style. `recolor`
@@ -57,6 +60,11 @@ With default settings, palettes with N from 1 to 50 on white, black and
 returned at once. Other palettes are computed when asked for, which takes
 from a few seconds at small N to one or two minutes at N = 50.
 
+The functions above belong to MCCP and are also available as `cmapkit.mccp`,
+for example `cmapkit.mccp.palette`. The colour space, observers and lightness
+limits (`cmapkit.space`, `cmapkit.bounds`) are shared with the methods to
+come.
+
 ## 3. Method
 
 Fixed palettes such as matplotlib's tab10 have a set number of colours K. If
@@ -64,8 +72,7 @@ a plot has more series than K, colours repeat. If it has fewer, the first N
 colours are used, and these are not the best set of N. MCCP computes a set
 for each N.
 
-Colour difference is measured in CAM16-UCS (Li et al. 2017), a colour space
-designed so that equal distances look equally different. Lightness
+Colour difference is measured in CAM16-UCS (Li et al. 2017). Lightness
 differences are divided by K_L = 0.77, the lightness weight that Luo et
 al. (2006) fitted to large colour differences. Without it, pairs differing
 mainly in lightness looked more distinct, and pale pairs of equal lightness
@@ -94,7 +101,7 @@ normal vision.
 MCCP maximises the least separation by numerical optimisation and then
 spreads apart the colours that do not limit it. The colours are rounded to
 8-bit values. The formulation and method are given in
-[docs/design.md](https://github.com/DavidLister/MCCP/blob/main/docs/design.md).
+[docs/design.md](https://github.com/DavidLister/cmapkit/blob/main/docs/design.md).
 
 ## 4. Calibration
 
@@ -108,20 +115,20 @@ backgrounds the limits are interpolated in the background's lightness, and
 MCCP warns when this happens for a mid-tone background, where the
 interpolation is least certain. `diagnostics["bounds"]` states which applies.
 The procedure and the measured values are given in
-[docs/calibration.md](https://github.com/DavidLister/MCCP/blob/main/docs/calibration.md),
+[docs/calibration.md](https://github.com/DavidLister/cmapkit/blob/main/docs/calibration.md),
 with instructions for calibrating another background or display.
 
-![A ten-colour palette on black](https://raw.githubusercontent.com/DavidLister/MCCP/main/docs/img/mccp10_srgb_cvd_black.png)
+![A ten-colour palette on black](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/mccp10_srgb_cvd_black.png)
 
 The figure shows a ten-colour palette on black, as seen with normal vision
 (top row) and by the three simulated dichromats. In each row:
 
 - left: a ring figure, in which every pair of colours touches twice
-  ([docs/test-figures.md](https://github.com/DavidLister/MCCP/blob/main/docs/test-figures.md));
+  ([docs/test-figures.md](https://github.com/DavidLister/cmapkit/blob/main/docs/test-figures.md));
 - centre: the six closest pairs, with their distances;
 - right: a sample plot.
 
-`mccp.figures.report_figure` draws it for any palette.
+`cmapkit.mccp.figures.report_figure` draws it for any palette.
 
 ## 5. Results
 
@@ -156,7 +163,7 @@ in nearly every measure at every N from 3 to 12.
 
 These figures are distances in models of colour difference. They have not
 been tested in a study of readers.
-[docs/results.md](https://github.com/DavidLister/MCCP/blob/main/docs/results.md)
+[docs/results.md](https://github.com/DavidLister/cmapkit/blob/main/docs/results.md)
 gives the comparisons in full.
 
 ## 6. Options
@@ -167,10 +174,10 @@ gives the comparisons in full.
 | `background` | Background colour, as `'#rrggbb'`, a matplotlib name, or an RGB triple. Default white. |
 | `text` | Colour of text and axes, kept clear of. Default black on light backgrounds, white on dark ones. |
 | `order` | None (the default): no particular order. `'similar'`: neighbouring colours alike. `'contrasting'`: neighbours as different as possible. An integer G: groups of G colours, each well separated, for example to pair with line styles. |
-| `observers` | Simulated observers, for example `[mccp.Observer("deutan", 1.0, 0.6)]`: type, severity from 0 to 1, and fraction of the normal-vision separation guaranteed. `[]` designs for normal vision alone. |
+| `observers` | Simulated observers, for example `[cmapkit.Observer("deutan", 1.0, 0.6)]`: type, severity from 0 to 1, and fraction of the normal-vision separation guaranteed. `[]` designs for normal vision alone. |
 | `radii` | One number per colour. A colour with a larger radius is kept further from the others and from the background. |
 | `fixed` | Colours already in use, which the new colours are kept apart from. |
-| `anchors` | Further colours to keep clear of, each `mccp.Anchor(colour, clearance)`, added to the background and text anchors (clearances 20 and 15). `replace_anchors=True` replaces those. |
+| `anchors` | Further colours to keep clear of, each `cmapkit.Anchor(colour, clearance)`, added to the background and text anchors (clearances 20 and 15). `replace_anchors=True` replaces those. |
 | `mode` | `'auto'` (the default, currently the same as `'srgb'`), `'srgb'`, or `'standard'`. The standard mode uses unweighted CAM16-UCS, one lightness limit for all hues, and normal vision only unless observers are given. |
 
 Each palette carries `min_distance`, the least distance between two of its
@@ -212,7 +219,7 @@ MATLAB. MCCP differs from them in three ways:
 - its lightness limits by hue for each background;
 - its guarantees for simulated colour-deficient observers.
 
-[docs/prior-work.md](https://github.com/DavidLister/MCCP/blob/main/docs/prior-work.md)
+[docs/prior-work.md](https://github.com/DavidLister/cmapkit/blob/main/docs/prior-work.md)
 reviews earlier work.
 
 ## 9. Use of AI
@@ -248,6 +255,6 @@ implementation is tested against the colour-science package.
 
 ## Licence
 
-MIT. See [LICENSE](https://github.com/DavidLister/MCCP/blob/main/LICENSE).
-[NOTICE](https://github.com/DavidLister/MCCP/blob/main/NOTICE) lists
+MIT. See [LICENSE](https://github.com/DavidLister/cmapkit/blob/main/LICENSE).
+[NOTICE](https://github.com/DavidLister/cmapkit/blob/main/NOTICE) lists
 third-party data included in the package.

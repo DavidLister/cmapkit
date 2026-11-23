@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib.patches import Rectangle  # noqa: E402
 
-from mccp.order import distance_matrix, path_order  # noqa: E402
-from mccp.space import Space, hex_to_rgb, viewing  # noqa: E402
+from cmapkit.mccp.order import distance_matrix, path_order  # noqa: E402
+from cmapkit.space import Space, hex_to_rgb, viewing  # noqa: E402
 
 SPACE = Space(viewing(lightness_weight=0.77))
 SOURCES = [("mccp-srgb-cvd", "sRGB mode, default (deutan, protan 0.6; tritan 0.2)"),

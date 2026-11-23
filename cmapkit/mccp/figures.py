@@ -5,7 +5,7 @@ import math
 import numpy as np
 
 from .order import distance_matrix, path_order
-from .space import Observer, Space, hex_to_rgb, linear_to_srgb, rgb_to_hex, srgb_to_linear, viewing
+from ..space import Observer, Space, hex_to_rgb, linear_to_srgb, rgb_to_hex, srgb_to_linear, viewing
 
 
 # --- ring layout ---------------------------------------------------------------
@@ -190,7 +190,7 @@ def report_figure(hexes, title, background="#ffffff", preset="screen", ucs="UCS"
                              Observer("tritan", 1.0)), path=None):
     """Ring disc, closest pairs and a plot, for normal vision and each observer."""
     import matplotlib.pyplot as plt
-    from .space import relative_luminance
+    from ..space import relative_luminance
     fg = "#000000" if relative_luminance(hex_to_rgb(background))[0] > 0.18 else "#ffffff"
     with plt.rc_context({"text.color": fg, "axes.edgecolor": fg, "axes.labelcolor": fg,
                          "xtick.color": fg, "ytick.color": fg}):

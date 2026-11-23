@@ -4,7 +4,7 @@ import colour
 import numpy as np
 import pytest
 
-from mccp.space import CAM16UCS, Observer, Space, Viewing, hex_to_rgb, srgb_to_linear, M_SRGB, XYZ_WHITE
+from cmapkit.space import CAM16UCS, Observer, Space, Viewing, hex_to_rgb, srgb_to_linear, M_SRGB, XYZ_WHITE
 
 
 def test_published_vector():
