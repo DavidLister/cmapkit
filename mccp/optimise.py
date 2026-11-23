@@ -718,7 +718,8 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
 
 def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
-            order=None, ucs="UCS", lightness_weight=None, mode="auto", power=np.inf):
+            order=None, ucs="UCS", lightness_weight=None, mode="auto", power=np.inf,
+            use_cache=True):
     """Choose n colours. See the README for the formulation.
 
     mode: 'srgb' (calibrated lightness bounds by hue, lightness weighted,
@@ -732,6 +733,20 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
     colours as returned."""
     if mode == "auto":
         mode = "srgb"
+    if use_cache:
+        cached = _from_cache(n, background, anchors, radii, observers, preset, fixed,
+                             fixed_radii, starts, seed, grid, ucs, lightness_weight, mode, power)
+        if cached is not None:
+            prob = make_problem(n, background, None, None, None, preset, (), None, ucs,
+                                lightness_weight, mode)
+            rgb = hex_to_rgb(cached)
+            if order is not None:
+                from .order import order_indices
+                rgb = rgb[order_indices(rgb, prob.space, order)]
+            prob.set_sides(rgb)
+            diag = diagnose(prob, rgb)
+            diag["log"] = {"source": "precomputed"}
+            return Palette(rgb_to_hex(rgb), rgb, diag["min_distance"], diag["scale"], diag)
     prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
                         ucs, lightness_weight, None if mode == "standard" else mode)
     if n == 0:
@@ -784,3 +799,45 @@ def diagnose(prob, rgb):
         out["lightness_bound_slack"] = ev.bslack.min(axis=0).round(2).tolist()
     out["max_violation"] = float(prob.violation(ev))
     return out
+
+
+# --- precomputed palettes ------------------------------------------------------
+
+_CACHE = None
+
+
+def cache_settings():
+    """The default arguments that precomputed palettes assume."""
+    return dict(mode="srgb", preset="screen", starts=8, seed=0, grid=24, ucs="UCS",
+                lightness_weight=None, power="inf")
+
+
+def _load_cache():
+    global _CACHE
+    if _CACHE is None:
+        import json
+        import os
+        path = os.path.join(os.path.dirname(__file__), "data", "palettes.json")
+        try:
+            with open(path) as f:
+                _CACHE = json.load(f)
+        except FileNotFoundError:
+            _CACHE = {}
+    return _CACHE
+
+
+def _from_cache(n, background, anchors, radii, observers, preset, fixed, fixed_radii, starts,
+                seed, grid, ucs, lightness_weight, mode, power):
+    """Hex colours of a precomputed palette, or None if the arguments are not
+    all at the defaults for which palettes were precomputed."""
+    from . import __version__
+    if (anchors is not None or radii is not None or observers is not None or fixed
+            or fixed_radii is not None or preset != "screen" or starts != 8 or seed != 0
+            or grid != 24 or ucs != "UCS" or lightness_weight is not None or mode != "srgb"
+            or np.isfinite(power)):
+        return None
+    cache = _load_cache()
+    if cache.get("version") != __version__:
+        return None
+    entry = cache.get("palettes", {}).get(to_hex(background), {}).get(str(n))
+    return entry["hex"] if entry else None
