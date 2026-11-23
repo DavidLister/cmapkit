@@ -233,3 +233,6 @@ figures/
 
 # Claude Code project agents (internal review prompts)
 .claude/
+
+# In-progress precomputation
+*.partial
