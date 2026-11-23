@@ -105,6 +105,10 @@ class Viewing:
     flare: float = 0.01
     ucs: str = "UCS"
     min_background_y: float = 2.0
+    # Override of K_L: weight of lightness against the chromatic axes.
+    # K_L < 1 makes lightness differences count for more (an ellipsoidal
+    # metric); None takes K_L from the constant set.
+    lightness_weight: float | None = None
 
     @property
     def adapting_luminance(self):
@@ -157,6 +161,8 @@ class CAM16UCS:
         rgb_aw = self._compress(self.D_rgb * rgb_w)
         self.A_w = (2 * rgb_aw[0] + rgb_aw[1] + rgb_aw[2] / 20 - 0.305) * self.N_bb
         self.K_L, self.c1, self.c2 = UCS_CONSTANTS[v.ucs]
+        if v.lightness_weight is not None:
+            self.K_L = v.lightness_weight
 
     def _compress(self, x):
         t = (self.F_L * np.abs(x) / 100) ** 0.42

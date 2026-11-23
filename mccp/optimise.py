@@ -69,7 +69,9 @@ class Problem:
                               if m else np.zeros((k, 0, 3)))
         bg = [i for i, a in enumerate(self.anchors) if a.lightness is not None]
         self.bg_index = bg[0] if bg else None
-        self.bg_dj = self.anchors[bg[0]].lightness if bg else 0.0
+        # The lightness condition is stated in ordinary J' units. Coordinates
+        # carry J'/K_L, so the requirement is scaled to match.
+        self.bg_dj = self.anchors[bg[0]].lightness / self.space.ucs.K_L if bg else 0.0
         # side[i] = +1 if colour i must be lighter than the background, -1 darker.
         self.side = np.full(self.n, -1.0)
         self.fixed_coords = (self.space.coords(self.fixed_rgb) if len(self.fixed_rgb)
@@ -562,11 +564,11 @@ class Palette:
 
 
 def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
-                 preset="screen", fixed=(), fixed_radii=None):
+                 preset="screen", fixed=(), fixed_radii=None, ucs="UCS", lightness_weight=None):
     if n < 0:
         raise ValueError("n must be non-negative")
     background = to_hex(background)
-    view = viewing(preset, background)
+    view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     obs = (Observer(),) + tuple(Observer(*o) if isinstance(o, tuple) else o for o in observers)
     space = Space(view, obs)
     anchors = default_anchors(background) if anchors is None else anchors
@@ -588,12 +590,13 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
 
 def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
-            order=None):
+            order=None, ucs="UCS", lightness_weight=None):
     """Choose n colours. See the README for the formulation.
 
     Colours are returned as 8-bit sRGB, and all diagnostics refer to the
     colours as returned."""
-    prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii)
+    prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
+                        ucs, lightness_weight)
     if n == 0:
         return Palette([], np.zeros((0, 3)), np.inf, np.inf, {})
     if order is not None and np.ptp(prob.radii) > 0:
@@ -634,6 +637,7 @@ def diagnose(prob, rgb):
                                   for m, a in enumerate(prob.anchors)}
     if prob.bg_index is not None:
         jb = prob.anchor_coords[0, prob.bg_index, 0]
-        out["background_lightness_difference"] = np.abs(ev.u[0, :, 0] - jb).round(2).tolist()
+        k_l = prob.space.ucs.K_L
+        out["background_lightness_difference"] = (k_l * np.abs(ev.u[0, :, 0] - jb)).round(2).tolist()
     out["max_violation"] = float(prob.violation(ev))
     return out

@@ -184,12 +184,13 @@ def draw_plot(ax, hexes, background="#ffffff"):
     ax.set_yticks([])
 
 
-def report_figure(hexes, title, background="#ffffff", preset="screen",
+def report_figure(hexes, title, background="#ffffff", preset="screen", ucs="UCS",
+                  lightness_weight=None,
                   observers=(Observer("deutan", 1.0), Observer("protan", 1.0),
                              Observer("tritan", 1.0)), path=None):
     """Ring disc, closest pairs and a plot, for normal vision and each observer."""
     import matplotlib.pyplot as plt
-    view = viewing(preset, background)
+    view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     rows = [Observer()] + list(observers)
     d = distance_matrix(hex_to_rgb(hexes), Space(view))
     grid = ring_layout(d)
