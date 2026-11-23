@@ -101,8 +101,9 @@ spreads apart the colours that do not limit it. The colours are rounded to
 The lightness limits were judged by the author on an LG DualUp monitor in a
 moderately lit room, on white, black and #333333 backgrounds. The monitor was
 in a wide-gamut (DCI-P3) mode at the time, which showed colours somewhat more
-saturated than a standard sRGB display does; docs/calibration.md estimates
-the effect. For other
+saturated than a standard sRGB display does. On two sRGB monitors the charts
+and palettes looked very similar; docs/calibration.md estimates the
+effect. For other
 backgrounds the limits are interpolated in the background's lightness, and
 MCCP warns when this happens for a mid-tone background, where the
 interpolation is least certain. `diagnostics["bounds"]` states which applies.
@@ -183,8 +184,8 @@ colours for normal vision, and `diagnostics`, which include:
 
 ## 7. Limitations
 
-- The lightness limits rest on one observer and one display, used in a
-  wide-gamut mode. Backgrounds other than white, black and #333333 use
+- The lightness limits rest on one observer. They were measured on one
+  display in a wide-gamut mode and checked on two sRGB monitors. Backgrounds other than white, black and #333333 use
   interpolated limits not checked by eye.
 - No measure of colour difference has been validated for differences as
   large as those between palette colours.

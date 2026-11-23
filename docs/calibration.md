@@ -19,8 +19,9 @@ the model assumes, and 2 to 18 % more colourful; the largest increases were
 for oranges, yellows and greens. The lightness shifts are smaller than the
 steps of 5 units between rows of the charts. The limits are therefore
 expected to hold for sRGB displays to within the resolution of the charts,
-but the colours were judged as bolder than they appear on an sRGB display. A
-check in the monitor's sRGB mode is planned.
+but the colours were judged as bolder than they appear on an sRGB display.
+The author later viewed the charts and palettes on two older sRGB monitors
+(ASUS PB278Q), where they looked very similar, and the limits were kept.
 
 ## 2. Procedure
 
