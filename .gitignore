@@ -230,3 +230,6 @@ CLAUDE.local.md
 
 # Generated test figures
 figures/
+
+# Claude Code project agents (internal review prompts)
+.claude/
