@@ -1,6 +1,7 @@
 # The ring figure
 
-This note describes the disc used to inspect palettes ([design.md](design.md), Section 7).
+This note describes the disc used to inspect palettes. It is drawn by
+`mccp.figures.report_figure`.
 
 ## 1. Layout
 
@@ -36,7 +37,8 @@ within one ring, which keeps every ring a permutation of the colours. The
 quantity minimised is the total shortfall: the sum over all pairs of the
 number of contacts by which the pair falls short of two. R is increased from
 the bound of equation (1) until a search reaches zero shortfall.
-Arrangements are stored for each N, so the figure is the same each time.
+The search uses fixed seeds, so the same palette always gives the same
+figure.
 
 The search is `ring_layout` in `mccp/figures.py`. The table gives the
 smallest R found in preliminary searches (three seeds of 150 000 steps each,

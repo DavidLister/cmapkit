@@ -51,8 +51,8 @@ XYZ' = \frac{XYZ + f\,XYZ_w}{1 + f},
 which makes the slope finite. The CAM16 equations are transcribed in
 [cam16-reference.md](cam16-reference.md).
 
-The viewing conditions are those of the sRGB reference environment (IEC
-1999): display white 80 cd/m², a dim surround, and 1 % flare. The relative
+The viewing conditions, called the `screen` preset, are those of the sRGB
+reference environment (IEC 1999): display white 80 cd/m², a dim surround, and 1 % flare. The relative
 luminance of the background $Y_b$ is taken from the background colour, with
 a lower limit of 2, and the adapting luminance is $L_A = 80\,Y_b/100$
 cd/m².
@@ -80,7 +80,11 @@ three quantities depend on hue, because the range of colourfulness an sRGB
 display can show at a given lightness depends strongly on hue: yellows and
 greens can be light and still colourful, blues and violets dark. They are
 tabulated at twelve hues, interpolated around the hue circle, and blended
-towards values for grey as the chroma falls below 20, where hue is weak.
+towards values for grey as the colourfulness $M'$ (the distance from the
+neutral axis in CAM16-UCS) falls below 20, where hue is weak. The values for
+grey were chosen, not measured. Each is the most restrictive of the measured
+values for that background and side, except the lowest value on white, which
+is 50 rather than 55.
 
 The tables were measured by eye on white, black and #333333 backgrounds
 ([calibration.md](calibration.md)). The floor comes from the dark side on
@@ -134,7 +138,9 @@ MCCP maximises the scale s subject to
 
 together with condition (2) for normal vision and the bounds of the sRGB
 cube. $\lVert\cdot\rVert_o$ is the distance (1) as seen by observer o. When
-all radii are 1, s is half the least distance for normal vision.
+all radii are 1 and the normal-vision condition binds, s is half the least
+distance for normal vision; when a simulated observer binds, it is half that
+observer's least distance divided by its priority.
 
 The default observers are deutan and protan at severity 1 and priority 0.6,
 and tritan at severity 1 and priority 0.2. Requiring every observer to see
@@ -146,7 +152,9 @@ guaranteeing a large share to the simulated observers.
 The value of s is set by the closest pairs alone. With s held at its
 optimum, a secondary objective spreads the remaining colours. It maximises
 the sum, over observers and colours, of each colour's soft minimum distance
-to the others.
+to the others. A soft minimum is a smooth approximation of the minimum,
+$-\beta^{-1}\log\sum_j e^{-\beta d_j}$, which approaches the least $d_j$
+as $\beta$ grows.
 
 ## 6. Method
 
@@ -159,8 +167,8 @@ guaranteed global optimum. It works in four stages.
    farthest-point selection, and each colour is then moved in turn to the
    candidate farthest from the rest, until no move helps (after Schlömer et
    al. 2011). Seven further starting sets are random draws with fixed seeds.
-2. Refinement. Each set is improved by L-BFGS-B on a soft minimum of the
-   scaled distances, with penalties for the anchor and lightness conditions,
+2. Refinement. Each set is improved by L-BFGS-B, a standard gradient method
+   for problems with bounds, on a soft minimum of the scaled distances, with penalties for the anchor and lightness conditions,
    at increasing sharpness.
 3. Polish. The best three sets are polished by sequential linear
    programming, which maximises the exact minimum within a trust region.
@@ -180,9 +188,10 @@ backgrounds are precomputed and stored with the package.
 ## 7. Output
 
 The colours have no natural order, but a plot assigns them to series in the
-order given. Two orderings are offered. The similar ordering minimises the
-total distance between consecutive colours, so the sequence changes
-gradually. The contrasting ordering maximises it. A palette may also be
+order given. Two orderings are offered. The similar ordering approximately
+minimises the total distance between consecutive colours, so the sequence
+changes gradually. The contrasting ordering approximately maximises it. Both
+use nearest-neighbour construction followed by exchange of segments. A palette may also be
 arranged in groups of G colours, each group as well separated as possible
 within itself, for example to pair the first G series with solid lines and
 the next G with dashed.
@@ -199,7 +208,7 @@ axes, and rebuilds the legend.
 
 Three options are available but not yet established. The power mean of the
 scaled distances with exponent −p (`power=p`) is an alternative to max-min.
-In trials up to N = 16 it gave no better distribution of the smallest
+In trials at N = 10 and 16 it gave no better distribution of the smallest
 distances than max-min. The constants for large differences (`ucs="LCD"`)
 are a second option. Viewing presets other than "screen" have provisional
 values.

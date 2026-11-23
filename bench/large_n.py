@@ -1,4 +1,4 @@
-"""Trial of MCCP at large N (README, Section 6)."""
+"""Trial of MCCP at large N, in the standard mode (docs/results.md, Section 3.4)."""
 
 import json
 import sys

@@ -13,7 +13,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 METRICS = [
-    ("cam16 normal", "CAM16-UCS (MCCP default's own)"),
+    ("cam16 normal", "CAM16-UCS (MCCP standard mode's own)"),
     ("cam16w normal", "CAM16-UCS lightness-weighted (sRGB mode's own)"),
     ("cam02", "CAM02-UCS (glasbey's own)"),
     ("de2000", "CIEDE2000 (Qualpal's own)"),
@@ -30,6 +30,8 @@ GEN_STYLE = {
     "mccp-greedy": dict(color="#aaaaaa", lw=1.0, ls=":"),
     "glasbey": dict(color="#1f77b4", lw=1.6),
     "glasbey-matched": dict(color="#1f77b4", lw=1.0, ls="--"),
+    "glasbey-cvd-deuter": dict(color="#17becf", lw=1.2, ls="-."),
+    "glasbey-cvd-protan": dict(color="#17becf", lw=1.2, ls=":"),
     "qualpal": dict(color="#d62728", lw=1.6),
     "qualpal-matched": dict(color="#d62728", lw=1.0, ls="--"),
 }

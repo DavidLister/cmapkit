@@ -1,6 +1,6 @@
 """Choice of N colours by maximising the least scaled distance.
 
-Stages (README, Section 3):
+Stages (docs/design.md, Section 6):
   1. starting sets: farthest-point selection on a candidate grid followed by a
      swap search, plus seeded random draws;
   2. refinement: L-BFGS-B on a soft minimum of the scaled distances, with

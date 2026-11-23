@@ -1,4 +1,4 @@
-"""Test figures (README, Section 4.4; docs/test-figures.md)."""
+"""Test figures (docs/test-figures.md)."""
 
 import math
 

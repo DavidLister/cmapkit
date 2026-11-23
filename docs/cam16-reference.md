@@ -3,7 +3,7 @@
 Transcribed from Li et al. (2017), *Comprehensive color solutions: CAM16,
 CAT16, and CAM16-UCS*, Color Res. Appl. 42(6):703–718, Appendix A Part 1 and
 Appendix B. The transcription was made by an AI system (see the README,
-Section 7) from the published paper. An implementation written from it
+Section 9) from the published paper. An implementation written from it
 reproduces the test vector at the end of this note to every printed digit.
 Check it against the paper before relying on any constant.
 
@@ -65,8 +65,10 @@ N_bb diverges as Y_b → 0.
 1. [R, G, B] = M16 · [X, Y, Z]
 2. R_c = D_R · R                     (and likewise G_c, B_c)
 3. R_a = sign(R_c) · 400 · (F_L·|R_c|/100)^0.42 / ((F_L·|R_c|/100)^0.42 + 27.13) + 0.1
-   The +0.1 is not mirrored for negative values. The negative branch fires
-   only on numerical noise, because M16's primaries enclose the spectrum locus.
+   The +0.1 is not mirrored for negative values. For every colour in the sRGB
+   cube, including after simulation of deficient colour vision, the cone
+   signals are non-negative (checked numerically), so the negative branch is
+   not reached in MCCP.
 4. a = R_a − 12·G_a/11 + B_a/11
    b = (R_a + G_a − 2·B_a) / 9
    h = atan2(b, a) in degrees, wrapped to [0, 360)

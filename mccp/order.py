@@ -1,4 +1,4 @@
-"""Ordering and grouping of a palette (README, Section 4.1)."""
+"""Ordering and grouping of a palette (docs/design.md, Section 7)."""
 
 import numpy as np
 

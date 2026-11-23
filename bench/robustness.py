@@ -1,4 +1,4 @@
-"""Re-score benchmark palettes under other CAM16 settings.
+"""Re-score benchmark palettes under other CAM16 settings (standard mode).
 
 Tests whether MCCP's lead in CAM16-UCS depends on its own viewing
 conditions. Usage: python3 -m bench.robustness figures/bench.json
@@ -19,7 +19,7 @@ SETTINGS = {
     "LCD constants": Viewing(80, 100, "dim", 0.01, "LCD"),
     "bright room 5% flare": Viewing(200, 100, "average", 0.05),
 }
-SOURCES = ["mccp", "mccp-srgb", "mccp-swap", "glasbey", "glasbey-matched", "qualpal", "qualpal-matched"]
+SOURCES = ["mccp", "mccp-swap", "glasbey", "glasbey-matched", "qualpal", "qualpal-matched"]
 
 
 def least(model, hexes):

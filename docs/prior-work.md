@@ -84,8 +84,9 @@ CAM16 and CAM16-UCS (Li et al. 2017) succeed CIECAM02 and CAM02-UCS.
   data set has a mean above 14.3. The closest pair of matplotlib's tab10
   palette is 28 CIELAB units apart, about twice the largest mean.
 - The compression function retains an infinite slope at zero (p. 704).
-- Li et al. do not define LCD or SCD variants of CAM16-UCS. MCCP will offer
-  the LCD constants of Luo et al. (2006), applied by analogy, as an option.
+- Li et al. do not define LCD or SCD variants of CAM16-UCS. MCCP offers the
+  LCD constants of Luo et al. (2006), applied by analogy, as the experimental
+  option `ucs="LCD"`.
 
 The equations are transcribed in [cam16-reference.md](cam16-reference.md).
 
@@ -131,8 +132,8 @@ spheres in a container.
 ## References
 
 Entries marked "unchecked" were not confirmed against a primary or
-publisher's source. The README also cites Birch (2012), confirmed from its
-PubMed abstract; IEC (1999), whose reference viewing environment was
+publisher's source. Other documents also cite Birch (2012), confirmed from
+its PubMed abstract; IEC (1999), whose reference viewing environment was
 confirmed from a secondary summary only; and W3C (2018).
 
 - Carter, R. C., and Carter, E. C. (1982). High-contrast sets of colors.

@@ -6,18 +6,21 @@ records how they were measured and gives the values.
 
 ## 1. Conditions
 
-The limits were judged on 2026-11-22 by one observer with normal colour
-vision, on an LG DualUp monitor in a moderately lit room. They are judgements
-of what remains satisfactory in a plot, not thresholds of detection. They
-apply to that display and room only approximately to others.
+The limits were judged on 2026-11-22 by the author, on an LG DualUp monitor
+in a moderately lit room. They are judgements of what remains satisfactory in
+a plot, not thresholds of detection. They apply only approximately to other
+displays and rooms.
 
 ## 2. Procedure
 
 Each chart shows rows of colours at a series of lightness values J'. Within a
 row, twelve columns span the CAM16 hue circle at 30° intervals. Each colour
-is drawn as a thin line, a thick line, small markers and a patch, at the
-strongest colourfulness sRGB allows at that lightness and hue. The charts
-are made by `mccp.calibrate.lightness_page`.
+is drawn as a thin line, a thick line, small markers and a patch. Each
+lightness appears twice: at the strongest colourfulness sRGB allows at that
+lightness and hue ("full"), and at half of it ("half"). The judgements used
+the full rows. The charts are made by `mccp.calibrate.lightness_page`.
+
+![A chart for the light side on white, with rows relative to the measured limits](img/calib_white_light_rel.png)
 
 For each background, the observer judged two charts:
 
@@ -26,15 +29,18 @@ For each background, the observer judged two charts:
 - On the text side, the darkest (on white) or lightest (on dark backgrounds)
   row in which the colours still read as colours and not as the text colour.
 
-The white background was judged twice. The second pass used charts with rows
-placed relative to the first estimates (`mccp.calibrate.bounds_page`), and
-corrected the dark side. The first pass gave only "darker than 40" for
-several hues.
+The white background was judged twice. On the first charts the dark side did
+not reach far enough to find the limit for several hues. The second pass used
+charts with rows placed relative to the first estimates
+(`mccp.calibrate.bounds_page`, shown above for the light side) and found
+those limits.
 
 ## 3. Values
 
 CAM16 hue h in degrees; lightness J' in the viewing conditions of each
-background.
+background. On white, "highest" is the limit on the background side and
+"lowest" on the text side; on black and #333333 it is the other way
+round.
 
 | h | 0 | 30 | 60 | 90 | 120 | 150 | 180 | 210 | 240 | 270 | 300 | 330 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -86,7 +92,8 @@ lightness_page("high", background="#ffffff", text="#000000", path="light.png")
 lightness_page("low", background="#ffffff", text="#000000", path="dark.png")
 ```
 
-Judge each chart as in Section 2, one row per column, using the "full" rows.
-The values form a `mccp.bounds.HueBounds` table. At present, `bounds_for`
-combines the tables for white, black and #333333 only. Other calibrations
-must be added there.
+Judge each chart as in Section 2, one row per column, using the full rows.
+The values form a `mccp.bounds.HueBounds` table. There is at present no
+argument for supplying a calibration: adding one means editing `SRGB_BOUNDS`
+and `bounds_for` in `mccp/bounds.py`, which combines the tables for white,
+black and #333333 only.

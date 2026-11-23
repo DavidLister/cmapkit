@@ -1,0 +1,35 @@
+
+screen (MCCP default): winner counts over 14 values of N: {'qualpal': 1, 'mccp': 13}
+   mccp / mccp-swap        min 1.00  median 1.06  max 1.16
+   mccp / glasbey          min 1.14  median 1.35  max 1.55
+   mccp / glasbey-matched  min 1.13  median 1.30  max 1.46
+   mccp / qualpal          min 0.98  median 1.48  max 2.18
+   mccp / qualpal-matched  min 1.18  median 1.42  max 1.60
+
+no flare: winner counts over 14 values of N: {'qualpal': 1, 'mccp': 13}
+   mccp / mccp-swap        min 1.00  median 1.04  max 1.15
+   mccp / glasbey          min 1.10  median 1.24  max 1.43
+   mccp / glasbey-matched  min 1.13  median 1.23  max 1.41
+   mccp / qualpal          min 0.98  median 1.25  max 1.53
+   mccp / qualpal-matched  min 1.11  median 1.27  max 1.36
+
+Yb 20, average, no flare: winner counts over 14 values of N: {'mccp': 14}
+   mccp / mccp-swap        min 1.01  median 1.05  max 1.17
+   mccp / glasbey          min 1.06  median 1.19  max 1.39
+   mccp / glasbey-matched  min 1.08  median 1.20  max 1.39
+   mccp / qualpal          min 1.01  median 1.26  max 1.48
+   mccp / qualpal-matched  min 1.10  median 1.24  max 1.34
+
+LCD constants: winner counts over 14 values of N: {'mccp-swap': 1, 'mccp': 13}
+   mccp / mccp-swap        min 1.00  median 1.04  max 1.18
+   mccp / glasbey          min 1.02  median 1.25  max 1.39
+   mccp / glasbey-matched  min 1.14  median 1.20  max 1.38
+   mccp / qualpal          min 1.10  median 1.55  max 2.40
+   mccp / qualpal-matched  min 1.17  median 1.33  max 1.72
+
+bright room 5% flare: winner counts over 14 values of N: {'mccp': 9, 'mccp-swap': 3, 'glasbey': 1, 'glasbey-matched': 1}
+   mccp / mccp-swap        min 0.94  median 1.01  max 1.10
+   mccp / glasbey          min 0.90  median 1.18  max 1.37
+   mccp / glasbey-matched  min 0.91  median 1.13  max 1.47
+   mccp / qualpal          min 1.07  median 1.70  max 3.01
+   mccp / qualpal-matched  min 1.06  median 1.35  max 2.02
