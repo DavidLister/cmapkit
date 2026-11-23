@@ -86,6 +86,12 @@ class Problem:
         self.pj = np.concatenate([j, n + fj.ravel()]).astype(int)
         allr = np.concatenate([self.radii, np.asarray(self.fixed_radii, dtype=float)])
         self.prr = allr[self.pi] + allr[self.pj]
+        # Per observer: the required spacing of a pair is s * (r_i + r_j) * f_o.
+        f = np.array([o.priority for o in self.space.observers], dtype=float)
+        if np.any(f <= 0) or np.any(f > 1):
+            raise ValueError("Observer priorities must lie in (0, 1].")
+        self.prrk = f[:, None] * self.prr[None, :]
+        self.priority = f
 
     def set_sides(self, rgb):
         if self.bg_index is None:
@@ -102,7 +108,7 @@ class Problem:
         ua = np.concatenate([u, self.fixed_coords], axis=1)
         diff = ua[:, self.pi] - ua[:, self.pj]
         dist = np.linalg.norm(diff, axis=-1)
-        q = dist / self.prr
+        q = dist / self.prrk
         adiff = u[:, :, None, :] - self.anchor_coords[:, None, :, :]
         adist = np.linalg.norm(adiff, axis=-1)
         aslack = adist - self.anchor_d[None, None, :] * self.radii[None, :, None]
@@ -139,7 +145,7 @@ def _pair_grad(prob, ev, coef):
     """Gradient wrt chosen sRGB of sum(coef * q), coef of shape (k, P)."""
     n = prob.n
     g = np.zeros((n, 3))
-    unit = ev.diff / np.maximum(ev.dist, 1e-12)[..., None] * (coef / prob.prr)[..., None]
+    unit = ev.diff / np.maximum(ev.dist, 1e-12)[..., None] * (coef / prob.prrk)[..., None]
     gi = np.einsum("kpa,kpab->pb", unit, ev.jac[:, prob.pi])
     np.add.at(g, prob.pi, gi)
     free = prob.pj < n
@@ -217,12 +223,16 @@ def _feasible_candidates(prob, cand):
     return cand[ok], u[:, ok], cap[ok]
 
 
-def _nearest_to_set(u_cand, u_set, r_cand, r_set):
-    """Least scaled distance from each candidate to a set: (C,)."""
+def _nearest_to_set(u_cand, u_set, r_cand, r_set, f=None):
+    """Least scaled distance from each candidate to a set: (C,). f holds the
+    observer priorities."""
     if u_set.shape[1] == 0:
         return np.full(u_cand.shape[1], np.inf)
     d = np.linalg.norm(u_cand[:, :, None, :] - u_set[:, None, :, :], axis=-1)
-    return (d / (r_cand + r_set[None, None, :])).min(axis=(0, 2))
+    d = d / (r_cand + r_set[None, None, :])
+    if f is not None:
+        d = d / f[:, None, None]
+    return d.min(axis=(0, 2))
 
 
 def farthest_point(prob, uc, cap):
@@ -238,7 +248,7 @@ def farthest_point(prob, uc, cap):
         r = prob.radii[i]
         u_set = np.concatenate([uc[:, chosen], prob.fixed_coords], axis=1)
         r_set = np.concatenate([prob.radii[:i], fr])
-        score = _nearest_to_set(uc, u_set, r, r_set)
+        score = _nearest_to_set(uc, u_set, r, r_set, prob.priority)
         if np.all(np.isinf(score)):
             score = cap.copy()
         score[(cap < r) | taken] = -np.inf
@@ -259,7 +269,7 @@ def swap_search(prob, uc, cap, idx, sweeps=20):
             others = np.delete(idx, i)
             u_set = np.concatenate([uc[:, others], prob.fixed_coords], axis=1)
             r_set = np.concatenate([np.delete(prob.radii, i), fr])
-            near = _nearest_to_set(uc, u_set, prob.radii[i], r_set)
+            near = _nearest_to_set(uc, u_set, prob.radii[i], r_set, prob.priority)
             near[others] = -np.inf
             near[cap < prob.radii[i]] = -np.inf
             cur = near[idx[i]]
@@ -312,7 +322,7 @@ def _linear_rows(prob, ev, pair_mask, anchor_mask, light_mask, bound_mask=None):
     o_idx, p_idx = np.nonzero(pair_mask)
     if len(o_idx):
         unit = (ev.diff[o_idx, p_idx] / np.maximum(ev.dist[o_idx, p_idx], 1e-12)[:, None]
-                / prob.prr[p_idx][:, None])
+                / prob.prrk[o_idx, p_idx][:, None])
         i = prob.pi[p_idx]
         j = prob.pj[p_idx]
         gi = np.einsum("sa,sab->sb", unit, ev.jac[o_idx, i])
@@ -382,7 +392,7 @@ def polish_maxmin(prob, rgb, radius=0.05, min_radius=1e-5, max_iter=300, elastic
         s = prob.score(ev)
         jmax = np.abs(ev.jac).max()
         reach = 2 * np.sqrt(3) * jmax * radius  # largest change of a distance
-        pm, am, lm, bm = _masks(prob, ev, s + reach / prob.prr.min(), reach)
+        pm, am, lm, bm = _masks(prob, ev, s + reach / prob.prrk.min(), reach)
         A, c, n_pair = _linear_rows(prob, ev, pm, am, lm, bm)
         n_var = 3 * prob.n
         # Variables: dx (n_var), t, e (elastic violation of anchor/light rows).
@@ -451,7 +461,7 @@ def spread(prob, rgb, s_star, beta_rel=3.0, radius=0.02, min_radius=1e-5, max_it
             break
         jmax = np.abs(ev.jac).max()
         reach = 2 * np.sqrt(3) * jmax * radius
-        pm, am, lm, bm = _masks(prob, ev, floor + reach / prob.prr.min(), reach)
+        pm, am, lm, bm = _masks(prob, ev, floor + reach / prob.prrk.min(), reach)
         A, c, n_pair = _linear_rows(prob, ev, pm, am, lm, bm)
         g = _pair_grad(prob, ev, coef).ravel()
         b_ub = c.copy()
@@ -479,7 +489,67 @@ def spread(prob, rgb, s_star, beta_rel=3.0, radius=0.02, min_radius=1e-5, max_it
 # --- driver ------------------------------------------------------------------
 
 
-def round_repair(prob, rgb, sweeps=4):
+def power_mean(q, p):
+    """Power mean of the scaled distances with exponent -p, and its
+    derivative with respect to q. p = inf gives the minimum."""
+    if q.size == 0:
+        return np.inf, np.zeros_like(q)
+    q = np.maximum(q, 1e-9)
+    m = q.min()
+    if not np.isfinite(p):
+        return m, None
+    r = m / q  # in (0, 1]
+    a = np.mean(r ** p)
+    value = m * a ** (-1.0 / p)
+    grad = (a ** (-1.0 / p - 1.0)) * (r ** (p + 1.0)) / q.size
+    return value, grad
+
+
+def refine_power(prob, x0, p, mus=(10.0, 100.0, 1000.0), maxiter=300):
+    """L-BFGS-B on the power mean, with penalties raised in turn until the
+    anchor, background and bound conditions hold."""
+    x = x0.ravel().copy()
+    for mu in mus:
+        def f(xf):
+            ev = prob.evaluate(xf.reshape(-1, 3))
+            val, gq = power_mean(ev.q, p)
+            pv, pg = _penalty(prob, ev, mu)
+            return -val + pv, (-_pair_grad(prob, ev, gq) + pg).ravel()
+
+        x = minimize(f, x, jac=True, method="L-BFGS-B", bounds=[(0, 1)] * x.size,
+                     options=dict(maxiter=maxiter)).x
+        if prob.violation(prob.evaluate(x.reshape(-1, 3), with_jac=False)) < FEAS_TOL:
+            break
+    return x.reshape(-1, 3)
+
+
+def solve_power(prob, p, starts=8, seed=0, grid=24):
+    """Maximise the power mean of the scaled distances (exponent -p)."""
+    cand, uc, cap = _feasible_candidates(prob, candidate_grid(grid))
+    rng = np.random.default_rng(seed)
+    swapped = swap_search(prob, uc, cap, farthest_point(prob, uc, cap))
+    inits = [("swap", cand[swapped])]
+    for k in range(starts - 1):
+        inits.append((f"random {k + 1}", cand[random_start(prob, cap, rng)]))
+    best = cand[swapped]
+    prob.set_sides(best)
+    best_side = prob.side.copy()
+    ev = prob.evaluate(best, False)
+    best_v = power_mean(ev.q, p)[0] if prob.violation(ev) < FEAS_TOL else -np.inf
+    log = dict(starts=[])
+    for name, x0 in inits:
+        prob.set_sides(x0)
+        x = refine_power(prob, x0, p)
+        ev = prob.evaluate(x, False)
+        v = power_mean(ev.q, p)[0] if prob.violation(ev) < FEAS_TOL else -np.inf
+        log["starts"].append(dict(start=name, value=v))
+        if v > best_v:
+            best, best_v, best_side = x, v, prob.side.copy()
+    prob.side = best_side
+    return best, log
+
+
+def round_repair(prob, rgb, sweeps=4, p=np.inf):
     """Round to 8-bit values, then move single colours by one step in each
     channel while this reduces the violation or raises the least distance."""
     x = np.round(np.clip(rgb, 0, 1) * 255)
@@ -489,7 +559,7 @@ def round_repair(prob, rgb, sweeps=4):
     def merit(xx):
         ev = prob.evaluate(xx / 255, with_jac=False)
         v = prob.violation(ev)
-        return (-v if v > FEAS_TOL else 0.0, prob.score(ev))
+        return (-v if v > FEAS_TOL else 0.0, power_mean(ev.q, p)[0])
 
     cur = merit(x)
     for _ in range(sweeps):
@@ -632,7 +702,7 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
 
 def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
-            order=None, ucs="UCS", lightness_weight=None, mode=None):
+            order=None, ucs="UCS", lightness_weight=None, mode=None, power=np.inf):
     """Choose n colours. See the README for the formulation.
 
     Colours are returned as 8-bit sRGB, and all diagnostics refer to the
@@ -648,9 +718,11 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
         cand, uc, cap = _feasible_candidates(prob, candidate_grid(grid))
         rgb, log = cand[farthest_point(prob, uc, cap)], {}
         prob.set_sides(rgb)
+    elif np.isfinite(power):
+        rgb, log = solve_power(prob, power, starts=starts, seed=seed, grid=grid)
     else:
         rgb, log = solve(prob, starts=starts, seed=seed, grid=grid)
-    rgb = round_repair(prob, rgb)
+    rgb = round_repair(prob, rgb, p=power)
     if order is not None:
         from .order import order_indices
         rgb = rgb[order_indices(rgb, prob.space, order)]

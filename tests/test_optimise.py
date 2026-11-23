@@ -119,3 +119,17 @@ def test_hue_bounds_interpolate_and_blend():
     jmin, jmax = B.limits(u)
     assert jmax[0] == pytest.approx(70) and jmin[0] == pytest.approx(35)
     assert jmax[1] == pytest.approx(B.grey_light) and jmin[1] == pytest.approx(B.grey_dark)
+
+
+def test_observer_priority_trades_normal_for_cvd():
+    from mccp.space import Observer
+    full = mccp.palette(5, observers=[Observer("deutan", 1.0, 1.0)], **FAST)
+    part = mccp.palette(5, observers=[Observer("deutan", 1.0, 0.4)], **FAST)
+    n_full = full.diagnostics["scale_by_observer"]["normal"]
+    n_part = part.diagnostics["scale_by_observer"]["normal"]
+    assert n_part >= n_full - 1e-6
+
+
+def test_power_objective_runs_and_is_feasible():
+    p = mccp.palette(5, power=3.0, **FAST)
+    assert p.diagnostics["max_violation"] <= opt.FEAS_TOL

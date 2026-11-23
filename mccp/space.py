@@ -207,6 +207,9 @@ class Observer:
 
     kind: str = "normal"  # 'normal', 'protan', 'deutan' or 'tritan'
     severity: float = 1.0
+    # Fraction of the common spacing this observer is guaranteed (max-min) or
+    # aimed at (power mean). 1 treats the observer like normal vision.
+    priority: float = 1.0
 
     def matrix(self):
         if self.kind == "normal":
@@ -217,7 +220,8 @@ class Observer:
         return table[i] + (x - i) * (table[i + 1] - table[i])
 
     def __str__(self):
-        return "normal" if self.kind == "normal" else f"{self.kind} {self.severity:g}"
+        s = "normal" if self.kind == "normal" else f"{self.kind} {self.severity:g}"
+        return s if self.priority == 1.0 else f"{s} (priority {self.priority:g})"
 
 
 class Space:
