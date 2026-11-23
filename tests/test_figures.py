@@ -31,6 +31,7 @@ def drawn_contacts(grid):
     return cnt
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("n", [5, 6, 8, 10])
 def test_every_pair_touches_twice(n):
     rng = np.random.default_rng(n)

@@ -1,20 +1,37 @@
 [project]
-name = "mccp"
-version = "0.0.1"
-description = "Maximum contrast colour picking for categorical plots (prototype)"
+name = "mccp"  # placeholder: "mccp" is taken on PyPI; to be decided before release
+version = "0.1.0.dev0"
+description = "Colour palettes for categorical plots with the closest pair as distinct as possible, including for colour-blind readers"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.10"
-dependencies = ["numpy", "scipy"]
+dependencies = ["numpy>=1.24", "scipy>=1.10"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Framework :: Matplotlib",
+]
+
+[project.urls]
+Repository = "https://github.com/DavidLister/MCCP"
 
 [project.optional-dependencies]
-figures = ["matplotlib"]
-test = ["pytest", "colour-science"]
+matplotlib = ["matplotlib>=3.7"]
+test = ["pytest", "colour-science", "matplotlib>=3.7"]
 bench = ["matplotlib", "colour-science", "colorspacious", "glasbey", "qualpal"]
 
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["mccp"]
+
+[tool.setuptools.package-data]
+mccp = ["data/*.json"]
+
+[tool.pytest.ini_options]
+markers = ["slow: takes more than a few seconds (ring layout search)"]

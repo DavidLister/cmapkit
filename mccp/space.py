@@ -131,6 +131,10 @@ PRESETS = {
 
 def viewing(preset="screen", background="#ffffff", **overrides):
     """Viewing conditions for a named preset and background colour."""
+    if preset != "screen":
+        import warnings
+        warnings.warn(f"The '{preset}' viewing preset has provisional values and is "
+                      "experimental; only 'screen' has been calibrated.", stacklevel=2)
     params = dict(PRESETS[preset])
     y = float(relative_luminance(hex_to_rgb(to_hex(background)))[0]) * 100.0
     params["background_y"] = y

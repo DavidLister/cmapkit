@@ -132,7 +132,8 @@ def test_observer_priority_trades_normal_for_cvd():
 
 
 def test_power_objective_runs_and_is_feasible():
-    p = mccp.palette(5, power=3.0, **FAST)
+    with pytest.warns(UserWarning, match="experimental"):
+        p = mccp.palette(5, power=3.0, **FAST)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 

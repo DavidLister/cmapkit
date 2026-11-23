@@ -733,6 +733,9 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
     colours as returned."""
     if mode == "auto":
         mode = "srgb"
+    if np.isfinite(power) or ucs != "UCS":
+        import warnings
+        warnings.warn("power= and ucs= are experimental options.", stacklevel=2)
     if use_cache:
         cached = _from_cache(n, background, anchors, radii, observers, preset, fixed,
                              fixed_radii, starts, seed, grid, ucs, lightness_weight, mode, power)
