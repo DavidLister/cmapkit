@@ -109,8 +109,9 @@ def test_srgb_mode_respects_hue_bounds():
     p = mccp.palette(6, mode="srgb", starts=2, grid=12)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
     assert min(p.diagnostics["lightness_bound_slack"]) >= -opt.FEAS_TOL
-    with pytest.raises(ValueError):
-        mccp.palette(3, mode="srgb", background="#202020", starts=2, grid=12)
+    q = mccp.palette(3, mode="srgb", background="#202020", starts=2, grid=12)
+    assert "interpolated" in q.diagnostics["bounds"]
+    assert q.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 
 def test_hue_bounds_interpolate_and_blend():
@@ -135,9 +136,24 @@ def test_power_objective_runs_and_is_feasible():
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
 
 
-def test_default_mode_is_srgb_on_white_and_standard_elsewhere():
+def test_default_mode_is_srgb_everywhere():
     p = mccp.palette(4, starts=2, grid=12)
     assert "lightness_bound_slack" in p.diagnostics
     assert any("deutan" in k for k in p.diagnostics["scale_by_observer"])
     q = mccp.palette(4, background="#202020", starts=2, grid=12)
-    assert "lightness_bound_slack" not in q.diagnostics
+    assert "lightness_bound_slack" in q.diagnostics
+
+
+def test_band_bounds_reproduce_calibrations_and_exclude_background():
+    from mccp.bounds import SRGB_BOUNDS, bounds_for
+    for bg, tab in SRGB_BOUNDS.items():
+        b = bounds_for(bg)
+        for k, hdeg in enumerate(tab.hues):
+            a, c = 30 * np.cos(np.radians(hdeg)), 30 * np.sin(np.radians(hdeg))
+            J = np.arange(0, 100.01, 0.5)
+            ok = b.feasible(np.stack([J, np.full_like(J, a), np.full_like(J, c)], -1), 1.0)
+            assert J[ok].min() == pytest.approx(tab.dark[k], abs=0.5)
+            assert J[ok].max() == pytest.approx(tab.light[k], abs=0.5)
+    mid = bounds_for("#808080")
+    u = np.array([[mid.j_bg, 30.0, 0.0]])  # a colour at the background's own lightness
+    assert not mid.feasible(u, 1.0)[0]

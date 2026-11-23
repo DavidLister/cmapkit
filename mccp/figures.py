@@ -190,6 +190,16 @@ def report_figure(hexes, title, background="#ffffff", preset="screen", ucs="UCS"
                              Observer("tritan", 1.0)), path=None):
     """Ring disc, closest pairs and a plot, for normal vision and each observer."""
     import matplotlib.pyplot as plt
+    from .space import relative_luminance
+    fg = "#000000" if relative_luminance(hex_to_rgb(background))[0] > 0.18 else "#ffffff"
+    with plt.rc_context({"text.color": fg, "axes.edgecolor": fg, "axes.labelcolor": fg,
+                         "xtick.color": fg, "ytick.color": fg}):
+        return _report_figure(hexes, title, background, preset, ucs, lightness_weight,
+                              observers, path)
+
+
+def _report_figure(hexes, title, background, preset, ucs, lightness_weight, observers, path):
+    import matplotlib.pyplot as plt
     view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     rows = [Observer()] + list(observers)
     d = distance_matrix(hex_to_rgb(hexes), Space(view))

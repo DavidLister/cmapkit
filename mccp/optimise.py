@@ -94,6 +94,9 @@ class Problem:
         self.priority = f
 
     def set_sides(self, rgb):
+        if self.bounds is not None:
+            self.side = self.bounds.side_of(self.space.coords(rgb)[0], self.space.ucs.K_L)
+            return
         if self.bg_index is None:
             return
         u = self.space.coords(rgb)[0]
@@ -120,8 +123,8 @@ class Problem:
         bslack = bgrad = None
         if self.bounds is not None:
             k_l = self.space.ucs.K_L
-            bslack = self.bounds.slack(u[0], k_l)
-            bgrad = self.bounds.slack_grad(u[0], k_l) if with_jac else None
+            bslack = self.bounds.slack(u[0], k_l, self.side)
+            bgrad = self.bounds.slack_grad(u[0], k_l, self.side) if with_jac else None
         return Eval(u, jac, q, diff, dist, aslack, adiff, adist, lslack, bslack, bgrad)
 
     def score(self, ev):
@@ -203,7 +206,7 @@ def _capacity(prob, u):
         cap = np.minimum(cap, (dj / prob.bg_dj).min(axis=0))
     if prob.bounds is not None:
         # The hue-dependent bounds do not scale with the radius.
-        inside = prob.bounds.slack(u[0], prob.space.ucs.K_L).min(axis=0) >= 0
+        inside = prob.bounds.feasible(u[0], prob.space.ucs.K_L)
         cap = np.where(inside, cap, 0.0)
     return cap
 
@@ -678,13 +681,12 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
     if mode == "srgb":
         # Calibrated mode: lightness weighted, and lightness bounds by hue in
         # place of the single background lightness condition.
-        from .bounds import SRGB_WHITE
-        if background != "#ffffff":
-            raise ValueError("The 'srgb' mode is so far calibrated on white only.")
         lightness_weight = 0.77 if lightness_weight is None else lightness_weight
-        bounds = SRGB_WHITE
+        bounds = "srgb"
         if anchors is None:
-            anchors = [Anchor(background, 20.0), Anchor("#000000", 15.0)]
+            light_bg = relative_luminance(hex_to_rgb(background))[0] > 0.18
+            anchors = [Anchor(background, 20.0),
+                       Anchor("#000000" if light_bg else "#ffffff", 15.0)]
         if observers is None:
             observers = SRGB_OBSERVERS
     elif mode is not None:
@@ -707,6 +709,10 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
                    else np.asarray(fixed_radii, float))
     if fixed_radii.shape != (len(fixed),) or np.any(fixed_radii <= 0):
         raise ValueError("fixed_radii must be positive, one per fixed colour.")
+    if bounds == "srgb":
+        from .bounds import bounds_for
+        j_bg = float(space.ucs(hex_to_rgb(background))[0, 0]) * space.ucs.K_L
+        bounds = bounds_for(background, j_bg)
     return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii, bounds)
 
 
@@ -718,13 +724,14 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
     mode: 'srgb' (calibrated lightness bounds by hue, lightness weighted,
     deutan and protan guaranteed 0.6 of the spacing and tritan 0.2),
     'standard' (single background lightness condition, normal vision only
-    unless observers are given), or 'auto' (the default): 'srgb' on a white
-    background, where it was calibrated, and 'standard' otherwise.
+    unless observers are given), or 'auto' (the default, currently 'srgb').
+    The hue bounds of 'srgb' are calibrated on white, black and #333333 and
+    interpolated in background L* elsewhere; diagnostics['bounds'] says which.
 
     Colours are returned as 8-bit sRGB, and all diagnostics refer to the
     colours as returned."""
     if mode == "auto":
-        mode = "srgb" if to_hex(background) == "#ffffff" else "standard"
+        mode = "srgb"
     prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
                         ucs, lightness_weight, None if mode == "standard" else mode)
     if n == 0:
@@ -771,6 +778,8 @@ def diagnose(prob, rgb):
         jb = prob.anchor_coords[0, prob.bg_index, 0]
         k_l = prob.space.ucs.K_L
         out["background_lightness_difference"] = (k_l * np.abs(ev.u[0, :, 0] - jb)).round(2).tolist()
+    if prob.bounds is not None:
+        out["bounds"] = prob.bounds.source
     if ev.bslack is not None:
         out["lightness_bound_slack"] = ev.bslack.min(axis=0).round(2).tolist()
     out["max_violation"] = float(prob.violation(ev))

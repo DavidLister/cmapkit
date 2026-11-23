@@ -134,6 +134,8 @@ def bounds_page(bounds, side="high", offsets=None, background="#ffffff", text="#
 
     view = viewing(preset, background)
     gamut = _gamut(view)
+    dark_bg = relative_luminance(hex_to_rgb(background))[0] < 0.18
+    toward_text = (side == "low") != dark_bg
     hues = np.asarray(bounds.hues, float)
     base = np.asarray(bounds.light if side == "high" else bounds.dark, float)
     if offsets is None:
@@ -158,7 +160,7 @@ def bounds_page(bounds, side="high", offsets=None, background="#ffffff", text="#
             ax.add_patch(Rectangle((k + 0.76, y - 0.2), 0.2, 0.42, facecolor=c,
                                    edgecolor="none"))
             ax.text(k + 0.5, y - 0.3, f"{b + off:g}", fontsize=6, ha="center", color="#888888")
-        if side == "low":
+        if toward_text:
             ax.plot(len(hues) + 0.05 + 0.4 * x, y + 0.05 + 0.08 * np.sin(8 * x), color=text,
                     lw=2.0)
         mark = "  <- your bound" if off == 0 else ""
@@ -166,11 +168,11 @@ def bounds_page(bounds, side="high", offsets=None, background="#ffffff", text="#
                 color=text)
     for k, hue in enumerate(hues):
         ax.text(k + 0.5, 0.45, f"h {hue:g}", ha="center", fontsize=7, color=text)
-    ax.set_xlim(-2.4, len(hues) + (0.6 if side == "low" else 0))
+    ax.set_xlim(-2.4, len(hues) + (0.6 if toward_text else 0))
     ax.set_ylim(-0.7 * len(rows) + 0.2, 0.65)
     ax.axis("off")
-    title = ("Light side, relative to each hue's bound (grey numbers: J')" if side == "high"
-             else "Dark side, relative to each hue's bound (grey numbers: J'; 45 is provisional)")
+    title = (("Light" if side == "high" else "Dark") + " side, relative to each hue's bound"
+             f" (grey numbers: J')   [background {background}]")
     ax.set_title(title, fontsize=10, color=text)
     fig.tight_layout()
     if path:
