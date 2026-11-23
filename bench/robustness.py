@@ -19,7 +19,7 @@ SETTINGS = {
     "LCD constants": Viewing(80, 100, "dim", 0.01, "LCD"),
     "bright room 5% flare": Viewing(200, 100, "average", 0.05),
 }
-SOURCES = ["mccp", "mccp-swap", "glasbey", "glasbey-matched", "qualpal", "qualpal-matched"]
+SOURCES = ["mccp", "mccp-srgb", "mccp-swap", "glasbey", "glasbey-matched", "qualpal", "qualpal-matched"]
 
 
 def least(model, hexes):

@@ -13,17 +13,19 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 METRICS = [
-    ("cam16 normal", "CAM16-UCS (MCCP's own)"),
+    ("cam16 normal", "CAM16-UCS (MCCP default's own)"),
+    ("cam16w normal", "CAM16-UCS lightness-weighted (sRGB mode's own)"),
     ("cam02", "CAM02-UCS (glasbey's own)"),
     ("de2000", "CIEDE2000 (Qualpal's own)"),
     ("oklab", "OKLab ×100 (referee)"),
-    ("cam16 deutan 1", "CAM16-UCS, deutan 1"),
-    ("cam16 protan 1", "CAM16-UCS, protan 1"),
+    ("cam16w deutan 1", "lightness-weighted, deutan 1"),
 ]
 
 GEN_STYLE = {
     "mccp": dict(color="#000000", lw=2.2),
     "mccp-cvd": dict(color="#000000", lw=1.4, ls="--"),
+    "mccp-srgb": dict(color="#9467bd", lw=2.2),
+    "mccp-srgb-cvd": dict(color="#9467bd", lw=1.6, ls="--"),
     "mccp-swap": dict(color="#777777", lw=1.0, ls=":"),
     "mccp-greedy": dict(color="#aaaaaa", lw=1.0, ls=":"),
     "glasbey": dict(color="#1f77b4", lw=1.6),
@@ -72,9 +74,11 @@ def plot_metrics(rows, path):
     plt.close(fig)
 
 
-COLS = ["cam16 normal", "cam02", "de2000", "oklab", "cam16 deutan 1", "cam16 2nd", "cam16 p5",
-        "bg dJ min", "bg contrast min", "J spread", "max chroma", "violations"]
-OWN = {"mccp": "cam16 normal", "mccp-cvd": "cam16 normal", "glasbey": "cam02",
+COLS = ["cam16 normal", "cam16w normal", "cam16w deutan 1", "cam02", "de2000", "oklab", "cam16 deutan 1", "cam16 2nd", "cam16 p5",
+        "bg dJ min", "bg contrast min", "J spread", "max chroma", "violations",
+        "srgb bound violations"]
+OWN = {"mccp": "cam16 normal", "mccp-cvd": "cam16 normal", "mccp-srgb": "cam16w normal",
+       "mccp-srgb-cvd": "cam16w normal", "glasbey": "cam02",
        "glasbey-matched": "cam02", "qualpal": "de2000", "qualpal-matched": "de2000"}
 
 
@@ -86,7 +90,7 @@ def table(rows, n):
         cells = []
         for c in COLS:
             v = r[c]
-            s = f"{v:.0f}" if c == "violations" else f"{v:.1f}"
+            s = f"{v:.0f}" if "violations" in c else f"{v:.1f}"
             if OWN.get(r["source"].split(":")[0]) == c:
                 s += "*"
             cells.append(s)

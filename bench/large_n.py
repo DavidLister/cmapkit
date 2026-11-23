@@ -12,7 +12,7 @@ def main(path, ns=(40, 60, 80, 100)):
     out = []
     for n in ns:
         t = time.time()
-        p = mccp.palette(n, starts=4)
+        p = mccp.palette(n, starts=4, mode="standard")
         secs = time.time() - t
         out.append(dict(n=n, seconds=secs, colours=p.hex, log=p.diagnostics["log"],
                         scale=p.diagnostics["scale"], continuous_scale=p.diagnostics["log"].get("continuous_scale"), **score(p.hex)))

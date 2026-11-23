@@ -124,7 +124,44 @@ Rounding to 8-bit values costs 0.6 to 1.8 % of the scale after the repair
 search. Every returned palette satisfies its conditions. Polished starts
 differ by about 1 % at large N.
 
-## 4. Limitations
+## 4. The sRGB mode
+
+Inspection of the ring figures by one observer showed that pairs separated
+mainly in lightness looked more distinct than CAM16-UCS predicts, and pale
+pairs of equal lightness less distinct. Weighting lightness more heavily
+(K_L = 0.77, an ellipsoidal metric) gave palettes the observer judged more
+even than either the standard constants or the large-difference constants of
+Luo et al. (2006).
+
+The same observer judged, for twelve hues at the strongest colourfulness sRGB
+allows, the lightest and the darkest lightness at which colours remain
+satisfactory on white. The limits depend strongly on hue and follow the shape
+of the sRGB gamut: yellows and greens may be light, blues and violets dark. A
+second pass, on charts drawn relative to the first estimates, corrected the
+dark side. These limits, interpolated around the hue circle, replace the
+single background lightness condition.
+
+The resulting "sRGB" mode is the default on white backgrounds. It also
+includes simulated deutan and protan observers at priority 0.6, and tritan
+at 0.2: each pair must be at least that fraction as far apart for the
+simulated observer as the common spacing requires.
+
+![Palettes of the sRGB mode for N from 3 to 30](img/srgb_palettes.png)
+
+![Least separation against N](img/srgb_vs_n.png)
+
+In the lightness-weighted measure, the observers cost normal vision 1 % of
+its least separation at N = 3, about 11 % at N = 10, and 19 % at N = 30. In
+return the worst of the deutan and protan separations stays at 0.6 of the
+normal one for every N, whereas palettes for normal vision alone fall to
+between 0.02 and 0.13 of it for N of 8 and above. The observer preferred the
+default palettes to those for normal vision alone
+([figure](img/mccp10_srgb_cvd.png)).
+
+These results rest on the judgements of one observer on one display, and
+the hue limits are calibrated for a white background only.
+
+## 5. Limitations
 
 The comparison shows separation under models of colour difference, not
 perceptual superiority. No measure has been validated for differences of
@@ -138,7 +175,7 @@ contain a dark and a bright green, which a reader would call by the same name
 highly saturated. Running time (2 to 20 s for N ≤ 30)
 rules out computing palettes interactively without a cache.
 
-## 5. Next steps
+## 6. Next steps
 
 In order of cost:
 

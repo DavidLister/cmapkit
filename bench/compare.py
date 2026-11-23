@@ -5,7 +5,8 @@ Protocol (fixed before running):
   - N in NS; fixed palettes are scored on their first N entries;
   - every palette is scored under several metrics. A palette's own
     objective is flagged in the output so that circular wins are visible:
-      MCCP -> cam16, glasbey -> cam02, qualpal -> de2000;
+      MCCP -> cam16, MCCP sRGB mode -> cam16w (lightness weighted),
+      glasbey -> cam02, qualpal -> de2000;
     OKLab is a referee that none of the generators optimises;
   - simulated deficiencies use Machado et al. (2009) at severity 1;
   - costs are reported where MCCP may lose: contrast against the
@@ -69,6 +70,13 @@ def score(hexes):
     for o, name in enumerate(["normal"] + [str(x) for x in OBSERVERS]):
         d = _pairwise_min(u[o])
         out[f"cam16 {name}"] = float(d[0])
+    # Lightness-weighted CAM16-UCS (K_L = 0.77), the measure of the sRGB mode.
+    spw = Space(viewing("screen", BG, lightness_weight=0.77), [Observer()] + OBSERVERS)
+    uw = spw.coords(rgb)
+    for o, name in enumerate(["normal"] + [str(x) for x in OBSERVERS]):
+        out[f"cam16w {name}"] = float(_pairwise_min(uw[o])[0])
+    from mccp.bounds import SRGB_WHITE
+    out["srgb bound violations"] = int(np.sum(SRGB_WHITE.slack(u[0], 1.0).min(axis=0) < -0.25))
     d = _pairwise_min(u[0])
     out["cam16 2nd"] = float(d[1]) if len(d) > 1 else float("nan")
     out["cam16 p5"] = float(np.percentile(d, 5))
@@ -115,12 +123,19 @@ def matched_candidates():
 def generators(n, cand_hex):
     out = {}
     t = time.time()
-    p = mccp.palette(n, background=BG)
+    p = mccp.palette(n, background=BG, mode="standard")
     out["mccp"] = (p.hex, time.time() - t)
     if n <= 12:
         t = time.time()
-        p = mccp.palette(n, background=BG, observers=[("deutan", 1.0), ("protan", 1.0)])
+        p = mccp.palette(n, background=BG, mode="standard",
+                         observers=[("deutan", 1.0), ("protan", 1.0)])
         out["mccp-cvd"] = (p.hex, time.time() - t)
+    t = time.time()
+    p = mccp.palette(n, background=BG, mode="srgb", observers=())
+    out["mccp-srgb"] = (p.hex, time.time() - t)
+    t = time.time()
+    p = mccp.palette(n, background=BG, mode="srgb")
+    out["mccp-srgb-cvd"] = (p.hex, time.time() - t)
     for stage in ("greedy", "swap"):
         t = time.time()
         out[f"mccp-{stage}"] = (mccp_stage(n, stage), time.time() - t)
@@ -167,7 +182,7 @@ def main(path):
     for name, pal in FIXED.items():
         env = score(pal)["bg dJ min"]
         anchors = mccp.default_anchors(BG, background_lightness=max(env, 0.0))
-        p = mccp.palette(len(pal), background=BG, anchors=anchors)
+        p = mccp.palette(len(pal), background=BG, anchors=anchors, mode="standard")
         results.append(dict(source=f"mccp-envelope:{name}", kind="generated", n=len(pal),
                             colours=p.hex, envelope=env, **score(p.hex)))
     with open(path, "w") as f:

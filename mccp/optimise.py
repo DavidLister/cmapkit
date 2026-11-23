@@ -661,7 +661,14 @@ class Palette:
         return iter(self.hex)
 
 
-def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
+# Default simulated observers of the 'srgb' mode: deuteranopia and protanopia
+# guaranteed 0.6 of the common spacing, tritanopia 0.2. At N = 10 this keeps
+# about 0.88 of the normal-vision spacing.
+SRGB_OBSERVERS = (Observer("deutan", 1.0, 0.6), Observer("protan", 1.0, 0.6),
+                  Observer("tritan", 1.0, 0.2))
+
+
+def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
                  preset="screen", fixed=(), fixed_radii=None, ucs="UCS", lightness_weight=None,
                  mode=None):
     if n < 0:
@@ -678,8 +685,11 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
         bounds = SRGB_WHITE
         if anchors is None:
             anchors = [Anchor(background, 20.0), Anchor("#000000", 15.0)]
+        if observers is None:
+            observers = SRGB_OBSERVERS
     elif mode is not None:
         raise ValueError(f"Unknown mode {mode!r}")
+    observers = () if observers is None else observers
     view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     obs = (Observer(),) + tuple(Observer(*o) if isinstance(o, tuple) else o for o in observers)
     space = Space(view, obs)
@@ -700,15 +710,23 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
     return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii, bounds)
 
 
-def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
+def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
-            order=None, ucs="UCS", lightness_weight=None, mode=None, power=np.inf):
+            order=None, ucs="UCS", lightness_weight=None, mode="auto", power=np.inf):
     """Choose n colours. See the README for the formulation.
+
+    mode: 'srgb' (calibrated lightness bounds by hue, lightness weighted,
+    deutan and protan guaranteed 0.6 of the spacing and tritan 0.2),
+    'standard' (single background lightness condition, normal vision only
+    unless observers are given), or 'auto' (the default): 'srgb' on a white
+    background, where it was calibrated, and 'standard' otherwise.
 
     Colours are returned as 8-bit sRGB, and all diagnostics refer to the
     colours as returned."""
+    if mode == "auto":
+        mode = "srgb" if to_hex(background) == "#ffffff" else "standard"
     prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
-                        ucs, lightness_weight, mode)
+                        ucs, lightness_weight, None if mode == "standard" else mode)
     if n == 0:
         return Palette([], np.zeros((0, 3)), np.inf, np.inf, {})
     if order is not None and np.ptp(prob.radii) > 0:

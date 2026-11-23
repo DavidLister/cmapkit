@@ -65,13 +65,13 @@ class HueBounds:
 
 
 # Judged by eye by one observer on a white background under the "screen"
-# preset, at the strongest colourfulness sRGB allows (2026-11-22). Dark-side
-# values of 45 replace readings of "worse than 40" and are provisional.
+# preset, at the strongest colourfulness sRGB allows (2026-11-22): first on
+# absolute lightness rows, then corrected on rows relative to these bounds.
 SRGB_WHITE = HueBounds(
     hues=(0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330),
     light=(70, 75, 80, 85, 90, 90, 90, 90, 80, 70, 70, 70),
-    dark=(35, 35, 45, 45, 45, 45, 45, 45, 45, 40, 35, 35),
+    dark=(35, 35, 50, 55, 55, 50, 55, 55, 50, 40, 35, 35),
     grey_light=70.0,
-    grey_dark=45.0,
-    source="one observer, white background, screen preset; dark 45 provisional",
+    grey_dark=50.0,
+    source="one observer, white background, screen preset, two passes",
 )

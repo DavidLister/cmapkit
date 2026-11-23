@@ -8,7 +8,7 @@ at which the colours stop being satisfactory.
 
 import numpy as np
 
-from .space import Space, hex_to_rgb, rgb_to_hex, viewing
+from .space import Space, hex_to_rgb, relative_luminance, rgb_to_hex, viewing
 
 HUES = np.arange(0, 360, 30)  # twelve hues
 
@@ -52,8 +52,20 @@ def lightness_page(side="high", background="#ffffff", text="#000000", levels=Non
     view = viewing(preset, background)
     gamut = _gamut(view)
     jb = Space(view).coords(hex_to_rgb(background))[0, 0, 0]
+    dark_bg = relative_luminance(hex_to_rgb(background))[0] < 0.18
+    # The side facing the background limits visibility; the other side is
+    # where colours turn into the text colour, shown as a reference line.
+    toward_text = (side == "low") != dark_bg
     if levels is None:
-        levels = np.arange(55, 100, 5) if side == "high" else np.arange(40, 0, -5)
+        # Rows run from 5 to 50 units in from the lighter (or darker) of the
+        # background and text colours, in steps of 5, on a grid of 5.
+        jt = Space(view).coords(hex_to_rgb(text))[0, 0, 0]
+        if side == "high":
+            top = 5 * np.floor((max(jb, jt) - 5) / 5)
+            levels = np.arange(top - 45, top + 1, 5)
+        else:
+            bottom = 5 * np.ceil((min(jb, jt) + 5) / 5)
+            levels = np.arange(bottom + 45, bottom - 1, -5)
     rows = len(levels)
     fig, ax = plt.subplots(figsize=(13, 0.85 * rows * 2 + 1))
     fig.patch.set_facecolor(background)
@@ -73,19 +85,23 @@ def lightness_page(side="high", background="#ffffff", text="#000000", levels=Non
                            s=8, color=c, linewidths=0)
                 ax.add_patch(Rectangle((x0 + 0.76, y - 0.2), 0.2, 0.42, facecolor=c,
                                        edgecolor="none"))
-            if side == "low":
+            if toward_text:
                 ax.plot(len(HUES) + 0.05 + 0.4 * x, y + 0.05 + 0.08 * np.sin(8 * x),
                         color=text, lw=2.0)
             label = f"J' {J:g}  (ΔJ' {abs(jb - J):.0f})  {tag}"
             ax.text(-0.15, y, label, ha="right", va="center", fontsize=8, color=text)
             y -= 0.6
         y -= 0.25
-    ax.set_xlim(-2.6, len(HUES) + (0.6 if side == "low" else 0))
+    ax.set_xlim(-2.6, len(HUES) + (0.6 if toward_text else 0))
     ax.set_ylim(y + 0.3, 0.5)
     ax.axis("off")
-    title = ("Light side: lightest row where every colour is still clearly visible"
-             if side == "high" else
-             "Dark side: darkest row where colours still read as colours (black line at right)")
+    extreme = "lightest" if side == "high" else "darkest"
+    if toward_text:
+        title = (f"Text side: {extreme} row where colours still read as colours, not as the "
+                 "text colour (line at right)")
+    else:
+        title = f"Background side: {extreme} row where every colour is still clearly visible"
+    title += f"   [background {background}]"
     ax.set_title(title, fontsize=10, color=text)
     fig.tight_layout()
     if path:

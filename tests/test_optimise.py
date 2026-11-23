@@ -6,7 +6,7 @@ from mccp import optimise as opt
 from mccp.order import distance_matrix, groups, path_order
 from mccp.space import Space, viewing
 
-FAST = dict(starts=2, grid=12)
+FAST = dict(starts=2, grid=12, mode="standard")
 
 
 def test_empty_and_single():
@@ -106,11 +106,11 @@ def test_bad_inputs_raise(bad):
 
 def test_srgb_mode_respects_hue_bounds():
     from mccp.bounds import SRGB_WHITE
-    p = mccp.palette(6, mode="srgb", **FAST)
+    p = mccp.palette(6, mode="srgb", starts=2, grid=12)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
     assert min(p.diagnostics["lightness_bound_slack"]) >= -opt.FEAS_TOL
     with pytest.raises(ValueError):
-        mccp.palette(3, mode="srgb", background="#202020", **FAST)
+        mccp.palette(3, mode="srgb", background="#202020", starts=2, grid=12)
 
 
 def test_hue_bounds_interpolate_and_blend():
@@ -133,3 +133,11 @@ def test_observer_priority_trades_normal_for_cvd():
 def test_power_objective_runs_and_is_feasible():
     p = mccp.palette(5, power=3.0, **FAST)
     assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
+
+
+def test_default_mode_is_srgb_on_white_and_standard_elsewhere():
+    p = mccp.palette(4, starts=2, grid=12)
+    assert "lightness_bound_slack" in p.diagnostics
+    assert any("deutan" in k for k in p.diagnostics["scale_by_observer"])
+    q = mccp.palette(4, background="#202020", starts=2, grid=12)
+    assert "lightness_bound_slack" not in q.diagnostics
