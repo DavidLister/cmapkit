@@ -7,7 +7,9 @@ colours are to be computed for that N, for the background of the plot, and for
 the conditions under which the plot will be viewed. The first target is
 matplotlib.
 
-No package code has yet been written; this document describes the design.
+This document describes the design. A first prototype, and its comparison
+with established palettes, are on the `prototype` branch and described in
+[docs/prototype-results.md](docs/prototype-results.md).
 
 "Contrast" in the name means colour difference in general. Contrast in
 lightness against the background is treated separately (Section 2.3).
@@ -113,7 +115,15 @@ use the "screen" conditions of Section 2.6.
 Pure green lies further from white than the grey does, yet it is much harder
 to see. The lightness difference $\Delta J'$ orders these colours as the
 contrast ratio does. The background is therefore also given a minimum lightness
-difference $\Delta J'_b$.
+difference $\Delta J'_b$. Each chosen colour is held on one side of the
+background, lighter or darker; the side is taken from the colour's starting
+position (Section 3), and different starts explore different assignments.
+
+The default, $\Delta J'_b = 25$ on white, matches the lightest colour of
+matplotlib's tab10 palette and gives a contrast ratio of about 2 to 1. The
+Web Content Accessibility Guidelines ask for 3 to 1 for graphical objects,
+which corresponds to $\Delta J'_b$ of about 37 on white; this is available as
+an option.
 
 By default the background is white and the axes and text are black. A dark
 background is obtained by changing these anchors.
@@ -190,19 +200,28 @@ The problem has many local optima. Its discrete form, choosing N colours
 from a fixed set of candidates, is NP-hard (Erkut 1990), and MCCP does not
 seek a guaranteed global optimum. It works in three stages.
 
-1. Starting sets. The first set is built by farthest-point selection from a
-   fixed grid of candidate colours: each new colour is the candidate farthest
-   from those already chosen and from the anchors. Further starting sets come
-   from random draws with fixed seeds. A palette computed for a nearby N may
-   also be supplied as a starting set, after colours are added by
+1. Starting sets. A fixed grid of candidate colours is reduced to those that
+   meet the anchor and background conditions for each colour's radius. The
+   first set is built by farthest-point selection: the first colour is the
+   candidate farthest from the anchors relative to their clearances, and each
+   later colour is the candidate farthest from those already chosen. Each
+   colour is then moved in turn to the candidate farthest from the rest,
+   until no move helps (after Schlömer et al. 2011). Further starting sets
+   come from random draws with fixed seeds. A palette computed for a nearby N
+   may also be supplied as a starting set, after colours are added by
    farthest-point selection or removed from the closest pairs. This keeps the
    colours similar when series are added or removed, and shortens the
    computation.
-2. Refinement. Each set is improved continuously by gradient methods. Only
-   pairs whose distance is near the current minimum are included in the
-   constraints, which keeps large N tractable.
-3. Selection. The best refined set is kept and the secondary objective is
-   applied.
+2. Refinement. Each set is improved continuously by maximising a soft minimum
+   of all pairwise distances, with penalties for the anchor and background
+   conditions. The best few sets are then polished by sequential linear
+   programming, which maximises the exact minimum within a trust region. Only
+   pairs whose distance is near the current minimum enter the linear
+   programmes, which keeps large N tractable.
+3. Selection. The best feasible set is kept and the secondary objective is
+   applied. The colours are then rounded to 8-bit values, and single colours
+   are moved by one step in each channel while this raises the least distance
+   or removes a violation caused by rounding.
 
 The same inputs, package version and platform are intended always to give
 the same palette.

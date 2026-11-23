@@ -7,7 +7,8 @@ This note describes the disc used to inspect palettes (README, Section 4.4).
 The disc consists of R concentric rings around a central circle. Each ring is
 divided into N equal cells, and each ring contains every colour of the palette
 once. The central circle is left as background, since cells near the centre
-would be too small to judge. Alternate rings are turned through half a cell.
+would be too small to judge. Each ring is turned through half a cell relative
+to the ring inside it.
 
 With this offset, a cell in an interior ring borders six others: two in its
 own ring, two in the ring inside it and two in the ring outside it. Cells of
@@ -37,9 +38,9 @@ number of contacts by which the pair falls short of two. R is increased from
 the bound of equation (1) until a search reaches zero shortfall.
 Arrangements are stored for each N, so the figure is the same each time.
 
-The table gives the smallest R found with an exploratory script, which will
-be included with the package (three seeds of 150 000 steps each, for each
-R). These values are not proved minimal.
+The search is `ring_layout` in `mccp/figures.py`. The table gives the
+smallest R found in preliminary searches (three seeds of 150 000 steps each,
+for each R). These values are not proved minimal.
 
 | N | 6 | 8 | 10 | 12 | 16 | 20 | 30 |
 |---|---|---|---|---|---|---|---|

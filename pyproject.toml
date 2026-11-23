@@ -1,0 +1,20 @@
+[project]
+name = "mccp"
+version = "0.0.1"
+description = "Maximum contrast colour picking for categorical plots (prototype)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy"]
+
+[project.optional-dependencies]
+figures = ["matplotlib"]
+test = ["pytest", "colour-science"]
+bench = ["matplotlib", "colour-science", "colorspacious", "glasbey", "qualpal"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["mccp"]
