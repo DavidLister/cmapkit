@@ -35,3 +35,44 @@ def test_sqrt_scale_equalises_shot_noise():
     t = scale(img, "sqrt", low=0, high=100)
     s = [t[:20000].std(), t[20000:].std()]
     assert s[0] == pytest.approx(s[1], rel=0.1)
+
+
+def test_image_bounds_are_calibrated_colours_carried_over():
+    from cmapkit.bounds import SRGB_WHITE, image_bounds
+    from cmapkit.space import viewing
+    same = image_bounds(viewing("screen", "#ffffff"))
+    # Under the white background's own viewing, the floor is the measured one
+    # (to the resolution of the gamut grid used to find the limit colours).
+    assert np.allclose(same.floor, SRGB_WHITE.dark, atol=1.5)
+    grey = image_bounds(viewing("screen", "#7c7c7c"))
+    assert all(f < c for f, c in zip(grey.floor, grey.ceil))
+
+
+def test_image_mode_palette_respects_limits():
+    import cmapkit
+    p = cmapkit.palette(6, background="#7c7c7c", mode="image", observers=[], starts=2, grid=12)
+    assert p.diagnostics["max_violation"] < 1e-3
+
+
+def test_path_map_is_uniform_and_curve_optimiser_thickens():
+    import cmapkit
+    from cmapkit.bounds import image_bounds
+    from cmapkit.hdrmaps.curve import CurveProblem, optimise, resample_equal, thickness
+    from cmapkit.hdrmaps.paths import PATH_VIEW, from_palette
+    from cmapkit.space import viewing
+    p = cmapkit.palette(8, background="#7c7c7c", mode="image", observers=[], starts=2, grid=12)
+    m = from_palette(p.rgb)
+    steps = np.linalg.norm(np.diff(m.u, axis=0), axis=1)
+    # Equal arc length; only the samples that straddle a corner of the
+    # polyline are shorter, as the chord cuts the corner.
+    assert np.mean(np.abs(steps - np.median(steps)) < 1e-6 * np.median(steps)) > 0.95
+    b = image_bounds(viewing("screen", "#7c7c7c"))
+    x0 = resample_equal(m.lut[::64], 30)
+    prob = CurveProblem(30, PATH_VIEW, (), b)
+    u0 = prob.coords(x0)[0]
+    step = float(np.mean(prob.steps(u0)))
+    w = max(2, int(np.ceil(2 * p.min_distance / step)))
+    x, info = optimise(x0, step=step, bounds=b, w=w, iters=60, penalty=5.0)
+    assert info["rho"] >= thickness(u0, w) - 1e-6
+    assert info["step_dev"] < 0.05 * step
+    assert info["bound_violation"] < 0.5

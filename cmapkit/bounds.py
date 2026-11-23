@@ -215,3 +215,43 @@ def bounds_for(background, j_bg=None):
     return BandBounds(hues=W.hues, floor=W.dark, ceil=ceil, margin=margin,
                       grey_floor=W.grey_dark, grey_ceil=grey_ceil, grey_margin=grey_margin,
                       j_bg=j_bg, source=src)
+
+
+def image_bounds(view, floor_from="#ffffff", ceil_from="#333333"):
+    """Floor and ceiling, without a background margin, for colours in an
+    image viewed under `view`.
+
+    The floor is the dark limit measured on white and the ceiling the light
+    limit measured on #333333 (the values bounds_for uses for a mid-grey
+    background). The measurements are J' values in the viewing conditions of
+    their own backgrounds, so they are carried over through the colours
+    themselves: at each tabulated hue, the colour shown at the limit (the
+    strongest colourfulness sRGB allows there) is re-expressed in `view`. The
+    grey values are carried over through the grey of the same J'."""
+    from .calibrate import HUES, _gamut, ring_at_lightness
+    from .space import Space, hex_to_rgb, viewing
+
+    target = Space(view)
+
+    def carry(table, grey, background, side):
+        src = viewing("screen", background)
+        gamut = _gamut(src)
+        out = []
+        for k, (hue, J) in enumerate(zip(table.hues, getattr(table, side))):
+            assert HUES[k] == hue
+            c = ring_at_lightness(J, src, 1.0, gamut=gamut)[k]
+            out.append(float(target.coords(hex_to_rgb(c))[0, 0, 0]))
+        rgb, Js = gamut[0], gamut[1]
+        greys = rgb[np.ptp(rgb, axis=1) == 0]
+        jg = Space(src).coords(greys)[0, :, 0]
+        g = greys[np.argmin(np.abs(jg - grey))]
+        return tuple(out), float(target.coords(g)[0, 0, 0])
+
+    F, gF = carry(SRGB_BOUNDS[floor_from], SRGB_BOUNDS[floor_from].grey_dark, floor_from, "dark")
+    C, gC = carry(SRGB_BOUNDS[ceil_from], SRGB_BOUNDS[ceil_from].grey_light, ceil_from, "light")
+    # With j_bg = 0 every colour lies on the light side, and a margin equal to
+    # the floor makes the lower condition J' >= F(h).
+    return BandBounds(hues=SRGB_WHITE.hues, floor=F, ceil=C, margin=F, grey_floor=gF,
+                      grey_ceil=gC, grey_margin=gF, j_bg=0.0,
+                      source=f"image: floor from {floor_from}, ceiling from {ceil_from}, "
+                             "carried over to the image's viewing conditions")

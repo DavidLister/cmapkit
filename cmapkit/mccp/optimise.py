@@ -697,6 +697,13 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
         defaults = [Anchor(background, SRGB_CLEARANCE[0]), Anchor(text, SRGB_CLEARANCE[1])]
         if observers is None:
             observers = SRGB_OBSERVERS
+    elif mode == "image":
+        # Colours for an image: calibrated floor and ceiling by hue, no
+        # background margin and no anchors. The background sets only the
+        # viewing conditions; a mid grey suits most images.
+        lightness_weight = 0.77 if lightness_weight is None else lightness_weight
+        bounds = "image"
+        defaults = []
     elif mode is not None:
         raise ValueError(f"Unknown mode {mode!r}")
     else:
@@ -731,6 +738,9 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
             warnings.warn(f"The lightness limits for background {background} are "
                           "interpolated between calibrated backgrounds and have not been "
                           "checked by eye; see docs/calibration.md.", stacklevel=3)
+    if bounds == "image":
+        from ..bounds import image_bounds
+        bounds = image_bounds(viewing(preset, background))
     return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii, bounds)
 
 
