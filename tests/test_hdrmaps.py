@@ -71,8 +71,35 @@ def test_path_map_is_uniform_and_curve_optimiser_thickens():
     prob = CurveProblem(30, PATH_VIEW, (), b)
     u0 = prob.coords(x0)[0]
     step = float(np.mean(prob.steps(u0)))
-    w = max(2, int(np.ceil(2 * p.min_distance / step)))
-    x, info = optimise(x0, step=step, bounds=b, w=w, iters=60, penalty=5.0)
-    assert info["rho"] >= thickness(u0, w) - 1e-6
+    x, info = optimise(x0, step=step, bounds=b, iters=60, penalty=5.0)
+    assert info["rho"] >= thickness(u0) - 1e-6
     assert info["step_dev"] < 0.05 * step
     assert info["bound_violation"] < 0.5
+
+
+def test_thickness_of_circle_and_line():
+    from cmapkit.hdrmaps.curve import thickness
+    # A half circle of radius R has thickness 2 R; a straight line is unbounded.
+    th = np.linspace(0, np.pi, 400)
+    R = 10.0
+    circle = np.stack([R * np.cos(th), R * np.sin(th), 0 * th], -1)
+    assert abs(thickness(circle) - 2 * R) < 0.05 * R
+    line = np.stack([np.linspace(0, 50, 60), 0 * th[:60], 0 * th[:60]], -1)
+    assert thickness(line) == np.inf
+    # A hairpin between samples has almost none.
+    hair = np.array([[0, 0, 0], [5, 0, 0], [0.5, 0.5, 0], [-5, 1, 0.0]])
+    assert thickness(hair) < 1.0
+
+
+def test_noise_estimate_and_blur():
+    from scipy.ndimage import gaussian_filter
+    from cmapkit.hdrmaps.noise import blur_for_length, kernel_gain, noise_sd
+    rng = np.random.default_rng(1)
+    yy, xx = np.mgrid[0:400, 0:400] / 400
+    t = 0.3 + 0.4 * xx * yy + 0.02 * rng.standard_normal((400, 400))
+    assert abs(noise_sd(t) / 0.02 - 1) < 0.05
+    for s in [1.0, 2.0]:
+        sd = np.std(gaussian_filter(0.02 * rng.standard_normal((400, 400)), s))
+        assert abs(sd / (0.02 * kernel_gain(s)) - 1) < 0.05
+    s = blur_for_length(0.02, 1000.0, threshold=3.0)
+    assert abs(1000.0 * 0.02 * kernel_gain(s) - 3.0) < 1e-3

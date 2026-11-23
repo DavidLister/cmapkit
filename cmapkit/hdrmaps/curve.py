@@ -2,21 +2,27 @@
 itself.
 
 The curve is represented by M points x_1 ... x_M in sRGB, with CAM16-UCS
-coordinates u_i under the path's viewing conditions. Its conditions are
+coordinates u_i under the path's viewing conditions, and a_ij denotes the
+length of the polyline between points i and j. Its conditions are
 
     |u_{i+1} - u_i| = l                      equal steps (uniform contrast),
-    |u_i - u_j|_o  >= p_o rho   for |i - j| >= w and every observer o
-                                             (thickness),
+    |u_i - u_j|_o  >= p_o rho s(a_ij / rho)  for |i - j| >= 2 and every
+                                             observer o (thickness),     (1)
 
-together with the lightness floor and ceiling of an image and the sRGB cube.
+with s(x) = sin(min(x, pi / 2)), together with the lightness floor and
+ceiling of an image and the sRGB cube. The right side of (1) is the chord
+of a circle of diameter rho spanning the arc a_ij, up to a quarter turn,
+and rho beyond. Parts of the curve far apart along it must therefore stay
+rho apart, and nearby parts may approach no closer than they would on that
+circle, so that the curve cannot turn more sharply than the circle. This is
+a discrete form of the thickness of a curve (Gonzalez and Maddocks 1999).
+Without the second part the curve folds back on itself between samples,
+and the map then reverses over a step or two, as an oscillating map does at
+its peaks.
+
 Either rho is maximised at a given step l (a given total length), or l is
-maximised at a given rho. The window w is the number of steps spanning an
-arc of 2 rho, so that parts of the curve closer than that along its length
-are exempt; the condition then also limits how sharply the curve can bend,
-as the thickness of a curve does (Gonzalez and Maddocks 1999).
-
-The method is sequential linear programming in a trust region, as in the
-max-min polish of MCCP (mccp.optimise.polish_maxmin).
+maximised at a given rho. The method is sequential linear programming in a
+trust region, as in the max-min polish of MCCP (mccp.optimise.polish_maxmin).
 """
 
 import numpy as np
@@ -41,24 +47,53 @@ class CurveProblem:
         return np.linalg.norm(np.diff(u0, axis=0), axis=1)
 
 
-def _pairs(m, w):
-    i, j = np.triu_indices(m, w)
-    return i, j
+def _pairs(m):
+    return np.triu_indices(m, 2)
 
 
-def thickness(u, w):
-    """Least distance between points at least w apart along the curve."""
-    i, j = _pairs(len(u), w)
-    return float(np.linalg.norm(u[i] - u[j], axis=1).min()) if len(i) else np.inf
+def pair_limits(d, a):
+    """For pairs at distance d and arc a, the largest rho that satisfies
+    (1) for each pair. The right side of (1) increases with rho, so the
+    thickness of the curve is the least of these."""
+    d, a = np.broadcast_arrays(np.asarray(d, float), np.asarray(a, float))
+    out = np.full(d.shape, np.inf)
+    near = d <= 2 * a / np.pi            # bound at rho <= 2 a / pi: rho = d
+    out[near] = d[near]
+    mid = ~near & (d < a)                # solve sin(x) / x = d / a, rho = a / x
+    if mid.any():
+        r = d[mid] / a[mid]
+        lo, hi = np.zeros(r.shape), np.full(r.shape, np.pi / 2)
+        for _ in range(50):
+            x = 0.5 * (lo + hi)
+            big = np.sinc(x / np.pi) > r     # sin(x)/x decreases on (0, pi/2]
+            lo, hi = np.where(big, x, lo), np.where(big, hi, x)
+        out[mid] = a[mid] / hi
+    return out
 
 
-def _state(prob, x, w, step, rho, bounds):
+def thickness(u, priority=1.0, arc=None):
+    """Largest rho for which a sampled curve u (M, 3) satisfies (1), for an
+    observer of the given priority. The arcs are measured along u unless
+    given (the optimiser measures them in normal vision for every
+    observer)."""
+    m = len(u)
+    if m < 3:
+        return np.inf
+    if arc is None:
+        arc = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(u, axis=0), axis=1))])
+    i, j = _pairs(m)
+    d = np.linalg.norm(u[i] - u[j], axis=1) / priority
+    return float(pair_limits(d, arc[j] - arc[i]).min())
+
+
+def _state(prob, x, step, rho, bounds):
     """Objective and violations of a curve: (objective, step deviation,
     bound violation, thickness shortfall, thickness, steps)."""
     u = prob.coords(x)
     k = len(prob.prio)
-    rho_now = min(thickness(u[o], w) / prob.prio[o] for o in range(k))
     st = prob.steps(u[0])
+    arc = np.concatenate([[0], np.cumsum(st)])
+    rho_now = min(thickness(u[o], prob.prio[o], arc) for o in range(k))
     viol = 0.0
     if bounds is not None:
         viol = max(0.0, -float(bounds.slack(u[0], prob.k_l, np.ones(len(x))).min()))
@@ -67,9 +102,8 @@ def _state(prob, x, w, step, rho, bounds):
     return float(st.min()), float(np.ptp(st)), viol, max(0.0, rho - rho_now), rho_now, st
 
 
-def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, w=None,
-             rho_guess=12.0, iters=300, radius=0.01, active_margin=4.0, penalty=20.0,
-             verbose=False):
+def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, iters=300,
+             radius=0.01, active_margin=4.0, penalty=20.0, verbose=False):
     """Improve a curve x (M, 3) in sRGB.
 
     Give `step` to maximise the thickness at that step length, or `rho` to
@@ -83,20 +117,15 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
     x = np.clip(np.asarray(x, float), 0, 1)
     m = len(x)
     prob = CurveProblem(m, view, observers, bounds)
-    l0 = float(np.mean(prob.steps(prob.coords(x)[0])))
-    if w is None:
-        # The window spans an arc of 2 rho; without a given rho, use the
-        # caller's guess (for a path through an MCCP palette, its spacing).
-        w = max(2, int(np.ceil(2 * (rho or rho_guess) / (step or l0))))
     k = len(prob.prio)
     nv = 3 * m + 4
     Z, ES, EB, ET = 3 * m, 3 * m + 1, 3 * m + 2, 3 * m + 3
-    i_all, j_all = _pairs(m, w)
+    i_all, j_all = _pairs(m)
 
     def merit(st):
         return st[0] - penalty * (st[1] + st[2] + st[3])
 
-    cur = _state(prob, x, w, step, rho, bounds)
+    cur = _state(prob, x, step, rho, bounds)
     history = [dict(it=0, objective=cur[0], dev=cur[1], viol=cur[2], short=cur[3],
                     rho=cur[4], radius=radius)]
     for it in range(1, iters + 1):
@@ -123,13 +152,25 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             g[:, ES] = -1.0
             rows.append(g)
             rhs.append(-sign * off)
-        # Thickness, every observer, pairs near the bound only:
-        # d + n.(J_i dx_i - J_j dx_j) >= p rho - e_t.
-        level = rho if rho is not None else cur[4]
+        # Thickness (1), every observer, pairs near the bound only. The right
+        # side p rho s(a / rho) is linearised in the free variable Z, the
+        # thickness or the step (on which the arcs depend), as c1 Z + c0:
+        # d + n.(J_i dx_i - J_j dx_j) >= p (c1 Z + c0) - e_t.
+        arc = np.concatenate([[0], np.cumsum(L)])
+        a = arc[j_all] - arc[i_all]
+        if rho is None:
+            xc = np.minimum(a / cur[4], np.pi / 2)
+            c1, c0 = np.sin(xc) - xc * np.cos(xc), a * np.cos(xc)
+        else:
+            xc = np.minimum(a / rho, np.pi / 2)
+            c1 = a / L.mean() * np.cos(xc)
+            c0 = rho * np.sin(xc) - a * np.cos(xc)
+        z0 = cur[4] if rho is None else L.mean()
         for o in range(k):
             diff = u[o, i_all] - u[o, j_all]
             d = np.linalg.norm(diff, axis=1)
-            act = np.flatnonzero(d < prob.prio[o] * level + active_margin)
+            p = prob.prio[o]
+            act = np.flatnonzero(d < p * (c1 * z0 + c0) + active_margin)
             if not len(act):
                 continue
             ii, jj, dd = i_all[act], j_all[act], d[act]
@@ -142,13 +183,9 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
                 T[r, 3 * ii + c] = ti[:, c]
                 T[r, 3 * jj + c] = tj[:, c]
             T[:, ET] = -1.0
-            if rho is None:
-                T[:, Z] = prob.prio[o]
-                rows.append(T)
-                rhs.append(dd)
-            else:
-                rows.append(T)
-                rhs.append(dd - prob.prio[o] * rho)
+            T[:, Z] = p * c1[act]
+            rows.append(T)
+            rhs.append(dd - p * c0[act])
         # Lightness floor and ceiling (normal vision): slack + grad.dx >= -e_b.
         if bounds is not None:
             sl = bounds.slack(u[0], prob.k_l, np.ones(m))        # (2, m)
@@ -174,7 +211,7 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
                 break
             continue
         x_new = np.clip(x + res.x[:3 * m].reshape(m, 3), 0, 1)
-        new = _state(prob, x_new, w, step, rho, bounds)
+        new = _state(prob, x_new, step, rho, bounds)
         if merit(new) > merit(cur) + 1e-9:
             x, cur = x_new, new
             history.append(dict(it=it, objective=cur[0], dev=cur[1], viol=cur[2],
@@ -187,7 +224,7 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             radius *= 0.5
             if radius < 1e-6:
                 break
-    info = dict(window=w, history=history, rho=cur[4], step=float(np.mean(cur[5])),
+    info = dict(history=history, rho=cur[4], step=float(np.mean(cur[5])),
                 length=float(cur[5].sum()), step_dev=cur[1], bound_violation=cur[2])
     return x, info
 
