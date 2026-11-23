@@ -158,3 +158,18 @@ def test_band_bounds_reproduce_calibrations_and_exclude_background():
     mid = bounds_for("#808080")
     u = np.array([[mid.j_bg, 30.0, 0.0]])  # a colour at the background's own lightness
     assert not mid.feasible(u, 1.0)[0]
+
+
+def test_anchors_add_to_defaults_and_min_distance_is_normal_vision():
+    p = mccp.palette(3, anchors=[mccp.Anchor("#ff0000", 10.0)], starts=2, grid=12)
+    assert set(p.diagnostics["anchor_distance"]) == {"#ffffff", "#000000", "#ff0000"}
+    q = mccp.palette(3, anchors=[mccp.Anchor("#ff0000", 10.0)], replace_anchors=True,
+                     starts=2, grid=12)
+    assert set(q.diagnostics["anchor_distance"]) == {"#ff0000"}
+    by = p.diagnostics["min_distance_by_observer"]
+    assert p.min_distance == pytest.approx(by["normal"])
+
+
+def test_interpolated_mid_grey_warns():
+    with pytest.warns(UserWarning, match="interpolated"):
+        mccp.palette(3, background="#808080", starts=2, grid=12)

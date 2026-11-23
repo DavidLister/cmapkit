@@ -18,6 +18,7 @@ import numpy as np
 from scipy.optimize import linprog, minimize
 from scipy.sparse import coo_matrix
 
+from .bounds import _lstar
 from .space import Observer, Space, hex_to_rgb, relative_luminance, rgb_to_hex, to_hex, viewing
 
 
@@ -680,29 +681,34 @@ SRGB_CLEARANCE = (20.0, 15.0)
 
 def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
                  preset="screen", fixed=(), fixed_radii=None, ucs="UCS", lightness_weight=None,
-                 mode=None):
+                 mode=None, text=None, replace_anchors=False):
     if n < 0:
         raise ValueError("n must be non-negative")
     background = to_hex(background)
+    if text is None:
+        text = "#000000" if relative_luminance(hex_to_rgb(background))[0] > 0.18 else "#ffffff"
+    text = to_hex(text)
     bounds = None
     if mode == "srgb":
         # Calibrated mode: lightness weighted, and lightness bounds by hue in
         # place of the single background lightness condition.
         lightness_weight = 0.77 if lightness_weight is None else lightness_weight
         bounds = "srgb"
-        if anchors is None:
-            light_bg = relative_luminance(hex_to_rgb(background))[0] > 0.18
-            anchors = [Anchor(background, SRGB_CLEARANCE[0]),
-                       Anchor("#000000" if light_bg else "#ffffff", SRGB_CLEARANCE[1])]
+        defaults = [Anchor(background, SRGB_CLEARANCE[0]), Anchor(text, SRGB_CLEARANCE[1])]
         if observers is None:
             observers = SRGB_OBSERVERS
     elif mode is not None:
         raise ValueError(f"Unknown mode {mode!r}")
+    else:
+        defaults = default_anchors(background, text)
+    if anchors is None:
+        anchors = defaults
+    elif not replace_anchors:
+        anchors = defaults + list(anchors)
     observers = () if observers is None else observers
     view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     obs = (Observer(),) + tuple(Observer(*o) if isinstance(o, tuple) else o for o in observers)
     space = Space(view, obs)
-    anchors = default_anchors(background) if anchors is None else anchors
     anchors = [Anchor(to_hex(a.colour), a.clearance, a.lightness) for a in anchors]
     for a in anchors:
         if a.clearance < 0 or (a.lightness is not None and a.lightness < 0):
@@ -720,14 +726,24 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
         from .bounds import bounds_for
         j_bg = float(space.ucs(hex_to_rgb(background))[0, 0]) * space.ucs.K_L
         bounds = bounds_for(background, j_bg)
+        if "interpolated" in bounds.source and 25 < _lstar(background) < 90:
+            import warnings
+            warnings.warn(f"The lightness limits for background {background} are "
+                          "interpolated between calibrated backgrounds and have not been "
+                          "checked by eye; see docs/calibration.md.", stacklevel=3)
     return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii, bounds)
 
 
 def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=None,
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
             order=None, ucs="UCS", lightness_weight=None, mode="auto", power=np.inf,
-            use_cache=True):
-    """Choose n colours. See the README for the formulation.
+            use_cache=True, text=None, replace_anchors=False):
+    """Choose n colours. The formulation is given in docs/design.md.
+
+    anchors are added to the default anchors (the background with clearance
+    20, and the text colour with clearance 15); with replace_anchors=True
+    they replace them. text is the colour of text and axes (default black on
+    light backgrounds, white on dark ones).
 
     mode: 'srgb' (calibrated lightness bounds by hue, lightness weighted,
     deutan and protan guaranteed 0.6 of the spacing and tritan 0.2),
@@ -744,8 +760,10 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
         import warnings
         warnings.warn("power= and ucs= are experimental options.", stacklevel=2)
     if use_cache:
-        cached = _from_cache(n, background, anchors, radii, observers, preset, fixed,
-                             fixed_radii, starts, seed, grid, ucs, lightness_weight, mode, power)
+        cached = (None if text is not None or replace_anchors else
+                  _from_cache(n, background, anchors, radii, observers, preset, fixed,
+                              fixed_radii, starts, seed, grid, ucs, lightness_weight, mode,
+                              power))
         if cached is not None:
             prob = make_problem(n, background, None, None, None, preset, (), None, ucs,
                                 lightness_weight, mode)
@@ -758,7 +776,8 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
             diag["log"] = {"source": "precomputed"}
             return Palette(rgb_to_hex(rgb), rgb, diag["min_distance"], diag["scale"], diag)
     prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
-                        ucs, lightness_weight, None if mode == "standard" else mode)
+                        ucs, lightness_weight, None if mode == "standard" else mode, text,
+                        replace_anchors)
     if n == 0:
         return Palette([], np.zeros((0, 3)), np.inf, np.inf, {})
     if order is not None and np.ptp(prob.radii) > 0:
@@ -788,7 +807,10 @@ def diagnose(prob, rgb):
     if ev.q.size:
         s = ev.q.min()
         out["scale"] = float(s)
-        out["min_distance"] = float(ev.dist.min())
+        # Least distance for normal vision; by observer below.
+        out["min_distance"] = float(ev.dist[0].min())
+        out["min_distance_by_observer"] = {str(o): float(v) for o, v in
+                                           zip(prob.space.observers, ev.dist.min(axis=1))}
         bind = np.argwhere(ev.q <= s * (1 + 1e-3))
         out["binding_pairs"] = [(int(prob.pi[p]), int(prob.pj[p]), str(prob.space.observers[o]))
                                 for o, p in bind]
