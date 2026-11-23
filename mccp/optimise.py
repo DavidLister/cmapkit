@@ -49,6 +49,8 @@ class Eval:
     adiff: np.ndarray
     adist: np.ndarray
     lslack: np.ndarray  # (k, n) background lightness slack (one-sided)
+    bslack: np.ndarray = None  # (2, n) hue-dependent lightness bounds, normal vision
+    bgrad: np.ndarray = None   # (2, n, 3) derivative of bslack with respect to u
 
 
 @dataclass
@@ -59,6 +61,7 @@ class Problem:
     radii: np.ndarray
     fixed_rgb: np.ndarray = field(default_factory=lambda: np.zeros((0, 3)))
     fixed_radii: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    bounds: object = None  # HueBounds, or None
 
     def __post_init__(self):
         self.radii = np.asarray(self.radii, dtype=float)
@@ -108,7 +111,12 @@ class Problem:
             lslack = self.side[None, :] * dj - self.bg_dj * self.radii[None, :]
         else:
             lslack = np.zeros(u.shape[:2])
-        return Eval(u, jac, q, diff, dist, aslack, adiff, adist, lslack)
+        bslack = bgrad = None
+        if self.bounds is not None:
+            k_l = self.space.ucs.K_L
+            bslack = self.bounds.slack(u[0], k_l)
+            bgrad = self.bounds.slack_grad(u[0], k_l) if with_jac else None
+        return Eval(u, jac, q, diff, dist, aslack, adiff, adist, lslack, bslack, bgrad)
 
     def score(self, ev):
         return ev.q.min() if ev.q.size else np.inf
@@ -119,6 +127,8 @@ class Problem:
             v = max(v, -ev.aslack.min())
         if self.bg_index is not None:
             v = max(v, -ev.lslack.min())
+        if ev.bslack is not None and ev.bslack.size:
+            v = max(v, -ev.bslack.min())
         return max(v, 0.0)
 
 
@@ -158,6 +168,10 @@ def _penalty(prob, ev, mu):
         v = np.minimum(ev.lslack, 0.0)
         val += mu * np.sum(v ** 2)
         g += np.einsum("kn,knb->nb", 2 * mu * v * prob.side[None, :], ev.jac[:, :, 0, :])
+    if ev.bslack is not None:
+        v = np.minimum(ev.bslack, 0.0)
+        val += mu * np.sum(v ** 2)
+        g += np.einsum("sn,sna,nab->nb", 2 * mu * v, ev.bgrad, ev.jac[0])
     return val, g
 
 
@@ -181,6 +195,10 @@ def _capacity(prob, u):
     if prob.bg_index is not None and prob.bg_dj > 0:
         dj = np.abs(u[..., 0] - prob.anchor_coords[:, prob.bg_index, None, 0])
         cap = np.minimum(cap, (dj / prob.bg_dj).min(axis=0))
+    if prob.bounds is not None:
+        # The hue-dependent bounds do not scale with the radius.
+        inside = prob.bounds.slack(u[0], prob.space.ucs.K_L).min(axis=0) >= 0
+        cap = np.where(inside, cap, 0.0)
     return cap
 
 
@@ -285,7 +303,7 @@ def refine_softmin(prob, x0, rel_betas=(4.0, 16.0, 64.0), mu=10.0, maxiter=200):
 # --- linearised constraints --------------------------------------------------
 
 
-def _linear_rows(prob, ev, pair_mask, anchor_mask, light_mask):
+def _linear_rows(prob, ev, pair_mask, anchor_mask, light_mask, bound_mask=None):
     """Sparse rows a such that each constraint value changes by a @ dx."""
     n = prob.n
     rows, cols, vals = [], [], []
@@ -326,6 +344,15 @@ def _linear_rows(prob, ev, pair_mask, anchor_mask, light_mask):
             rows.append(rr); cols.append(3 * i_idx + b); vals.append(g[:, b])
         vals_c.append(ev.lslack[o_idx, i_idx])
         r += len(o_idx)
+    if bound_mask is not None:
+        s_idx, i_idx = np.nonzero(bound_mask)
+        if len(s_idx):
+            g = np.einsum("sa,sab->sb", ev.bgrad[s_idx, i_idx], ev.jac[0, i_idx])
+            rr = r + np.arange(len(s_idx))
+            for b in range(3):
+                rows.append(rr); cols.append(3 * i_idx + b); vals.append(g[:, b])
+            vals_c.append(ev.bslack[s_idx, i_idx])
+            r += len(s_idx)
     A = coo_matrix((np.concatenate(vals) if vals else [],
                     (np.concatenate(rows) if rows else [], np.concatenate(cols) if cols else [])),
                    shape=(r, 3 * n)).tocsr()
@@ -338,7 +365,8 @@ def _masks(prob, ev, q_limit, slack_limit):
     anchor = ev.aslack < slack_limit if ev.aslack.size else np.zeros(ev.aslack.shape, bool)
     light = (ev.lslack < slack_limit if prob.bg_index is not None
              else np.zeros(ev.lslack.shape, bool))
-    return pair, anchor, light
+    bound = ev.bslack < slack_limit if ev.bslack is not None else None
+    return pair, anchor, light, bound
 
 
 # --- stage 3: exact max-min by sequential linear programming -----------------
@@ -354,8 +382,8 @@ def polish_maxmin(prob, rgb, radius=0.05, min_radius=1e-5, max_iter=300, elastic
         s = prob.score(ev)
         jmax = np.abs(ev.jac).max()
         reach = 2 * np.sqrt(3) * jmax * radius  # largest change of a distance
-        pm, am, lm = _masks(prob, ev, s + reach / prob.prr.min(), reach)
-        A, c, n_pair = _linear_rows(prob, ev, pm, am, lm)
+        pm, am, lm, bm = _masks(prob, ev, s + reach / prob.prr.min(), reach)
+        A, c, n_pair = _linear_rows(prob, ev, pm, am, lm, bm)
         n_var = 3 * prob.n
         # Variables: dx (n_var), t, e (elastic violation of anchor/light rows).
         # Pair rows:   q + a dx >= t      ->  -a dx + t       <= q
@@ -423,8 +451,8 @@ def spread(prob, rgb, s_star, beta_rel=3.0, radius=0.02, min_radius=1e-5, max_it
             break
         jmax = np.abs(ev.jac).max()
         reach = 2 * np.sqrt(3) * jmax * radius
-        pm, am, lm = _masks(prob, ev, floor + reach / prob.prr.min(), reach)
-        A, c, n_pair = _linear_rows(prob, ev, pm, am, lm)
+        pm, am, lm, bm = _masks(prob, ev, floor + reach / prob.prr.min(), reach)
+        A, c, n_pair = _linear_rows(prob, ev, pm, am, lm, bm)
         g = _pair_grad(prob, ev, coef).ravel()
         b_ub = c.copy()
         b_ub[:n_pair] -= floor
@@ -564,10 +592,24 @@ class Palette:
 
 
 def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
-                 preset="screen", fixed=(), fixed_radii=None, ucs="UCS", lightness_weight=None):
+                 preset="screen", fixed=(), fixed_radii=None, ucs="UCS", lightness_weight=None,
+                 mode=None):
     if n < 0:
         raise ValueError("n must be non-negative")
     background = to_hex(background)
+    bounds = None
+    if mode == "srgb":
+        # Calibrated mode: lightness weighted, and lightness bounds by hue in
+        # place of the single background lightness condition.
+        from .bounds import SRGB_WHITE
+        if background != "#ffffff":
+            raise ValueError("The 'srgb' mode is so far calibrated on white only.")
+        lightness_weight = 0.77 if lightness_weight is None else lightness_weight
+        bounds = SRGB_WHITE
+        if anchors is None:
+            anchors = [Anchor(background, 20.0), Anchor("#000000", 15.0)]
+    elif mode is not None:
+        raise ValueError(f"Unknown mode {mode!r}")
     view = viewing(preset, background, ucs=ucs, lightness_weight=lightness_weight)
     obs = (Observer(),) + tuple(Observer(*o) if isinstance(o, tuple) else o for o in observers)
     space = Space(view, obs)
@@ -585,18 +627,18 @@ def make_problem(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, obs
                    else np.asarray(fixed_radii, float))
     if fixed_radii.shape != (len(fixed),) or np.any(fixed_radii <= 0):
         raise ValueError("fixed_radii must be positive, one per fixed colour.")
-    return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii)
+    return Problem(n, space, anchors, radii, fixed_rgb, fixed_radii, bounds)
 
 
 def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observers=(),
             preset="screen", fixed=(), fixed_radii=None, starts=8, seed=0, grid=24,
-            order=None, ucs="UCS", lightness_weight=None):
+            order=None, ucs="UCS", lightness_weight=None, mode=None):
     """Choose n colours. See the README for the formulation.
 
     Colours are returned as 8-bit sRGB, and all diagnostics refer to the
     colours as returned."""
     prob = make_problem(n, background, anchors, radii, observers, preset, fixed, fixed_radii,
-                        ucs, lightness_weight)
+                        ucs, lightness_weight, mode)
     if n == 0:
         return Palette([], np.zeros((0, 3)), np.inf, np.inf, {})
     if order is not None and np.ptp(prob.radii) > 0:
@@ -639,5 +681,7 @@ def diagnose(prob, rgb):
         jb = prob.anchor_coords[0, prob.bg_index, 0]
         k_l = prob.space.ucs.K_L
         out["background_lightness_difference"] = (k_l * np.abs(ev.u[0, :, 0] - jb)).round(2).tolist()
+    if ev.bslack is not None:
+        out["lightness_bound_slack"] = ev.bslack.min(axis=0).round(2).tolist()
     out["max_violation"] = float(prob.violation(ev))
     return out

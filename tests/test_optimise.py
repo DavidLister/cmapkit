@@ -102,3 +102,20 @@ def test_background_forms(bg):
 def test_bad_inputs_raise(bad):
     with pytest.raises(ValueError):
         mccp.palette(3, **bad, **FAST)
+
+
+def test_srgb_mode_respects_hue_bounds():
+    from mccp.bounds import SRGB_WHITE
+    p = mccp.palette(6, mode="srgb", **FAST)
+    assert p.diagnostics["max_violation"] <= opt.FEAS_TOL
+    assert min(p.diagnostics["lightness_bound_slack"]) >= -opt.FEAS_TOL
+    with pytest.raises(ValueError):
+        mccp.palette(3, mode="srgb", background="#202020", **FAST)
+
+
+def test_hue_bounds_interpolate_and_blend():
+    from mccp.bounds import SRGB_WHITE as B
+    u = np.array([[0.0, 30.0, 0.0], [0.0, 0.0, 0.0]])  # hue 0 at chroma 30, and grey
+    jmin, jmax = B.limits(u)
+    assert jmax[0] == pytest.approx(70) and jmin[0] == pytest.approx(35)
+    assert jmax[1] == pytest.approx(B.grey_light) and jmin[1] == pytest.approx(B.grey_dark)
