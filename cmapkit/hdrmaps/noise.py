@@ -26,7 +26,10 @@ the length; for a map of given length it gives the blur.
 Immerkaer (1996): the image is filtered with the 3 x 3 mask that is the outer
 product of (1, -2, 1) with itself, which removes planes and nearly removes
 smooth signal, and the median absolute response gives the noise robustly
-against edges. For white noise, sigma(s) = sigma(0) |k_s|, where |k_s| is the
+against edges. Regions without noise would pull the median to zero, so
+pixels whose 3 x 3 neighbourhood is constant, or touches the least or
+greatest value of the image (as clipped regions do after scaling), are left
+out. For white noise, sigma(s) = sigma(0) |k_s|, where |k_s| is the
 root sum of squares of the blur kernel. The noise of the test images is close
 to white; it is slightly correlated along the scan line, which this
 estimate does not account for.
@@ -40,8 +43,11 @@ the tube then lies in it as a curve in a surface, so that
 
     L rho = K,                                                         (3)
 
-with K about V / h. For the limits of bounds.image_bounds and the curves of
-curve.optimise, K is about 13 600 for rho from 7 to 27 (N from 20 to 200).
+with K about V / h. For the limits of bounds.image_bounds and curves optimised for
+normal vision only, K is about 13 600 for rho from 7 to 27 (N from 20 to
+200). Curves that must also be uniform and thick for colour-deficient
+observers lie in a smaller effective space: the shipped maps have L rho
+near 5 000.
 Equations (2) and (3) together give the thickness that a map of the
 required length can have, rho = K / (T D), and the largest D for which a
 chosen least thickness can be kept.
@@ -55,14 +61,24 @@ import numpy as np
 from .paths import PATH_VIEW
 
 
-def noise_sd(t):
+def noise_sd(t, min_pixels=100):
     """Standard deviation of white noise in an image t, by the method of
-    Immerkaer (1996) with a median in place of the mean."""
-    from scipy.ndimage import convolve
+    Immerkaer (1996) with a median in place of the mean, over the pixels
+    whose 3 x 3 neighbourhood is neither constant nor touches the least or
+    greatest value of t. Raises ValueError if fewer than min_pixels remain."""
+    from scipy.ndimage import convolve, maximum_filter, minimum_filter
+    t = np.asarray(t, float)
+    if t.ndim != 2:
+        raise ValueError(f"noise_sd needs a grey image (H, W), not shape {t.shape}")
     l = np.array([1.0, -2.0, 1.0])
-    r = convolve(np.asarray(t, float), np.outer(l, l))[2:-2, 2:-2]
+    r = convolve(t, np.outer(l, l))[2:-2, 2:-2]
+    hi, lo = maximum_filter(t, 3)[2:-2, 2:-2], minimum_filter(t, 3)[2:-2, 2:-2]
+    keep = (hi > lo) & (hi < t.max()) & (lo > t.min())
+    if keep.sum() < min_pixels:
+        raise ValueError("Too few pixels with noise to estimate it (the image is flat or "
+                         "clipped nearly everywhere); give the blur explicitly.")
     # The mask's root sum of squares is 6; median |x| = 0.6745 sd for a normal.
-    return float(np.median(np.abs(r)) / (0.6745 * 6.0))
+    return float(np.median(np.abs(r[keep])) / (0.6745 * 6.0))
 
 
 def kernel_gain(s):
@@ -91,9 +107,16 @@ def required_length(D, threshold=3.0):
 
 def blur_for_length(sigma0, length, threshold=3.0, top=20.0):
     """Blur s (pixels) at which a map of the given length shows the noise at
-    the threshold. Zero if the map is short enough without blur."""
+    the threshold. Zero if the map is short enough without blur; `top`, with
+    a warning, if even that blur is not enough."""
     if length * sigma0 <= threshold:
         return 0.0
+    if length * sigma0 * kernel_gain(top) > threshold:
+        import warnings
+        warnings.warn(f"A blur of {top:g} pixels is not enough for a map of length "
+                      f"{length:.0f} to show this noise at {threshold:g}; using {top:g}.",
+                      stacklevel=2)
+        return float(top)
     lo, hi = 0.0, top
     for _ in range(40):
         mid = 0.5 * (lo + hi)

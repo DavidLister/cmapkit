@@ -29,7 +29,20 @@ def _resample(rgb, m):
     return np.stack([np.interp(s, np.arange(len(rgb)), rgb[:, k]) for k in range(3)], -1)
 
 
-def assess(rgb, view=PATH_VIEW, samples=1024, window=1 / 64, apart=0.1, sep_samples=600):
+def _separation(u, apart, chunk=500):
+    """Least distance between rows of u more than apart * len(u) apart."""
+    m = len(u)
+    best = np.inf
+    for a in range(0, m, chunk):
+        rows = np.arange(a, min(a + chunk, m))
+        d = np.linalg.norm(u[rows, None] - u[None], axis=-1)
+        far = np.abs(rows[:, None] - np.arange(m)[None]) > apart * m
+        if far.any():
+            best = min(best, float(d[far].min()))
+    return best
+
+
+def assess(rgb, view=PATH_VIEW, samples=1024, window=1 / 64, apart=0.1, sep_samples=3000):
     """Measures of the map rgb (n, 3) for each observer in OBSERVERS.
 
     Returns a dict observer -> dict(length, speed_max_min, speed_p95_p5,
@@ -37,15 +50,13 @@ def assess(rgb, view=PATH_VIEW, samples=1024, window=1 / 64, apart=0.1, sep_samp
     space = Space(view, tuple(OBSERVERS.values()))
     u = space.coords(_resample(rgb, samples))
     us = space.coords(_resample(rgb, sep_samples))
-    idx = np.arange(sep_samples)
-    far = np.abs(idx[:, None] - idx[None]) > apart * sep_samples
     w = max(1, int(round(window * (samples - 1))))
     out = {}
     for k, name in enumerate(OBSERVERS):
         d = np.linalg.norm(np.diff(u[k], axis=0), axis=1)
         v = np.convolve(d, np.ones(w) / w, mode="valid") * len(d)
         p5, p95 = np.percentile(v, [5, 95])
-        sep = np.linalg.norm(us[k][:, None] - us[k][None], axis=-1)[far].min()
+        sep = _separation(us[k], apart)
         out[name] = dict(length=float(d.sum()), speed_max_min=float(v.max() / v.min()),
                          speed_p95_p5=float(p95 / p5), separation=float(sep))
     return out

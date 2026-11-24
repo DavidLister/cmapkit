@@ -17,7 +17,7 @@ ends when a round makes no progress. The result is a local optimum, and
 depends on every setting below, so that the maps may not be reproduced on
 another platform or with another version of scipy. The script checks each
 map against TARGETS and writes nothing if one misses them. The run takes
-about a minute.
+about two minutes.
 """
 
 import argparse
@@ -40,24 +40,30 @@ from cmapkit.space import Observer, Space, viewing  # noqa: E402
 BACKGROUND = "#7c7c7c"   # sets the viewing conditions of image mode (mid grey)
 
 
-def observers(tritan=0.2):
-    """The colour-deficient observers of the curve optimiser: protan and deutan
-    with priority 0.6, as in MCCP, and tritan with the priority given."""
-    return (Observer("protan", 1.0, 0.6), Observer("deutan", 1.0, 0.6),
+def observers(tritan=0.2, red_green=0.6):
+    """The colour-deficient observers of the curve optimiser, with the
+    priorities given: protan and deutan (0.6 in MCCP), and tritan (0.2)."""
+    return (Observer("protan", 1.0, red_green), Observer("deutan", 1.0, red_green),
             Observer("tritan", 1.0, tritan))
 
-# name: palette size, curve points, path order, tritan priority in the curve
-# optimiser if not 0.2, then the optimiser stages. At the thickness of 8 asked
-# of path20, tritan's default priority of 0.2 would guarantee it a separation
-# of only 1.6; 0.4 guarantees about 3.
+# name: palette size, curve points, path order, the priorities of the
+# colour-deficient observers in the curve optimiser if not those of MCCP
+# (red_green for protan and deutan, 0.6; tritan, 0.2), then the optimiser
+# stages. The first stage asks only for a least step for those observers;
+# the later ones hold their steps in a band, narrowed in steps for path10,
+# since a narrow band asked of a curve far from it folds the curve. path20
+# is first held at a thickness of 9, then lengthened in step mode within
+# the band. Its higher priorities keep its separation above 3 for every
+# observer; at MCCP's, tritan would be guaranteed only 0.2 of the thickness.
 RECIPES = {
     "path10": dict(n=10, m=40, order="normal", stages=[
         dict(least_step=0.55, penalty=5.0, rounds=10),
-        dict(least_step=0.55, band=0.10, penalty=20.0, rounds=15),
+        *[dict(least_step=0.55, band=b, penalty=100.0, rounds=15) for b in (0.3, 0.2, 0.15, 0.1)],
     ]),
-    "path20": dict(n=20, m=70, order="protan-deutan", tritan=0.4, stages=[
+    "path20": dict(n=20, m=70, order="protan-deutan", red_green=0.7, tritan=0.6, stages=[
         dict(least_step=0.70, penalty=5.0, rounds=10),
-        dict(least_step=0.55, band=0.15, rho=8.0, penalty=20.0, rounds=15),
+        dict(least_step=0.55, band=0.15, rho=9.0, penalty=100.0, rounds=15),
+        dict(least_step=0.55, band=0.20, penalty=100.0, rounds=15),
     ]),
 }
 
@@ -85,7 +91,7 @@ def build(recipe, log=print):
                           use_cache=False)
     rgb = pal.rgb[path_order(pal.rgb, recipe["order"])]
     x = resample_equal(PathMap(rgb, "linear").lut[::8], recipe["m"])
-    obs = observers(recipe.get("tritan", 0.2))
+    obs = observers(recipe.get("tritan", 0.2), recipe.get("red_green", 0.6))
     prob = CurveProblem(recipe["m"], PATH_VIEW, obs, bounds)
     for stage in recipe["stages"]:
         stage = dict(stage)
@@ -100,7 +106,8 @@ def build(recipe, log=print):
             if len(info["history"]) <= 2:
                 break
     u = prob.coords(x)
-    arc = np.concatenate([[0], np.cumsum(prob.steps(u[0]))])
+    steps = [prob.steps(v) for v in u]
+    arc = np.concatenate([[0], np.cumsum(steps[0])])
     lut = PathMap(x, "linear").lut
     return dict(
         points=np.round(x, 8).tolist(),
@@ -108,18 +115,32 @@ def build(recipe, log=print):
         observers=[str(o) for o in obs],
         thickness=float(min(thickness(u[o], prob.prio[o], arc) for o in range(len(u)))),
         sharpest_turn=float(turning(u[0]).max()),
+        # Conditions (3) and (5) of docs/hdrmaps.md at the points: the spread
+        # of the normal steps relative to their mean, and each other
+        # observer's ratio of greatest to least step.
+        step_spread=float(np.ptp(steps[0]) / steps[0].mean()),
+        step_ratios={str(o): float(s.max() / s.min()) for o, s in zip(obs, steps[1:])},
         measures=assess(lut),
         recipe=recipe,
     ), time.time() - t0
 
 
-# A map is shipped only if, for every observer, the speed ratio p95/p5 and
-# the separation (cmapkit.hdrmaps.measure) are within these limits.
+# A map is shipped only if its points meet conditions (3) and (5) of
+# docs/hdrmaps.md, with the band of its last stage, and if, for every
+# observer, the speed ratio p95/p5 and the separation
+# (cmapkit.hdrmaps.measure) are within these limits.
 TARGETS = dict(speed_p95_p5=1.7, separation=3.0)
 
 
-def failures(measures):
+def failures(measures, built=None, band=None):
     out = []
+    if built is not None:
+        if built["step_spread"] > 1e-3:
+            out.append(f"normal steps unequal by {built['step_spread']:.4f}")
+        allowed = (1 + band) / (1 - band) * (1 + 1e-3)
+        for o, r in built["step_ratios"].items():
+            if r > allowed:
+                out.append(f"{o} step ratio {r:.3f} outside the band ({allowed:.3f})")
     for o, v in measures.items():
         if v["speed_p95_p5"] > TARGETS["speed_p95_p5"]:
             out.append(f"{o} speed p95/p5 {v['speed_p95_p5']:.2f}")
@@ -141,7 +162,7 @@ def main():
         m = maps[name]["measures"]
         print("  " + ", ".join(f"{o} L {v['length']:.0f} p95/p5 {v['speed_p95_p5']:.2f} "
                                f"sep {v['separation']:.1f}" for o, v in m.items()), flush=True)
-        bad = failures(m)
+        bad = failures(m, maps[name], recipe["stages"][-1]["band"])
         if bad:
             sys.exit(f"{name} misses its targets ({', '.join(bad)}); nothing written. "
                      "The optimum is local and depends on the platform's linear "

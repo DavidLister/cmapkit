@@ -158,6 +158,19 @@ def test_shipped_maps_are_uniform_and_separated_for_every_observer(name):
         assert v["length"] > 250
         # The data file records what the map is.
         assert v["length"] == pytest.approx(rec[obs]["length"], rel=1e-3)
+    # Conditions (3) and (5) of docs/hdrmaps.md hold at the points.
+    from cmapkit.hdrmaps.curve import CurveProblem
+    from cmapkit.hdrmaps.library import _data
+    from cmapkit.hdrmaps.paths import PATH_VIEW
+    from cmapkit.space import Observer
+    band = info(name)["recipe"]["stages"][-1]["band"]
+    x = np.asarray(_data()["maps"][name]["points"])
+    obs = (Observer("protan"), Observer("deutan"), Observer("tritan"))
+    u = CurveProblem(len(x), PATH_VIEW, obs).coords(x)
+    st = [np.linalg.norm(np.diff(c, axis=0), axis=1) for c in u]
+    assert np.ptp(st[0]) < 1e-3 * st[0].mean()
+    for s in st[1:]:
+        assert s.max() / s.min() <= (1 + band) / (1 - band) * 1.001
 
 
 def test_assess_of_a_grey_map_is_the_same_for_every_observer():
@@ -169,12 +182,72 @@ def test_assess_of_a_grey_map_is_the_same_for_every_observer():
 
 
 def test_render_matches_the_blur_to_the_noise():
-    from cmapkit.hdrmaps import render
+    from scipy.ndimage import gaussian_filter
+    from cmapkit.hdrmaps import render, scale
     rng = np.random.default_rng(2)
-    img = rng.poisson(np.tile(np.linspace(100, 10000, 400), (300, 1))).astype(float)
+    # Left half a ramp, right half a constant level, all with shot noise; the
+    # noise shown is measured on the constant half, independently of the
+    # model by which render chose the blur.
+    mean = np.concatenate([np.tile(np.linspace(100, 10000, 300), (400, 1)),
+                           np.full((400, 300), 3000.0)], axis=1)
+    img = rng.poisson(mean).astype(float)
     rgb, d = render(img, "path20", threshold=3.0)
-    assert rgb.shape == (300, 400, 3) and rgb.min() >= 0 and rgb.max() <= 1
-    assert d["blur"] > 0 and d["noise_shown"] == pytest.approx(3.0, rel=1e-3)
+    assert rgb.shape == (400, 600, 3) and rgb.min() >= 0 and rgb.max() <= 1
+    t = gaussian_filter(scale(img, "sqrt"), d["blur"])
+    measured = d["length"] * t[20:-20, 340:-20].std()
+    assert d["blur"] > 0 and measured == pytest.approx(3.0, rel=0.1)
     grey = np.repeat(np.linspace(0, 1, 256)[:, None], 3, axis=1)
     _, d0 = render(img, grey, blur=0)
     assert d0["blur"] == 0 and d0["length"] < d["length"]
+
+
+def test_render_rejects_what_it_cannot_show():
+    from cmapkit.hdrmaps import render
+    img = np.random.default_rng(3).poisson(np.full((60, 60), 500.0)).astype(float)
+    for bad in [np.full((60, 60), 3.0), np.dstack([img] * 3),
+                np.where(img > 520, np.nan, img)]:
+        with pytest.raises(ValueError):
+            render(bad)
+    with pytest.raises(ValueError):
+        render(img, "no such map")
+    assert render(img, "viridis")[1]["length"] == pytest.approx(132, abs=2)
+
+
+def test_noise_estimate_ignores_flat_and_clipped_regions():
+    from cmapkit.hdrmaps import noise_sd, scale
+    rng = np.random.default_rng(4)
+    base = np.tile(np.linspace(400, 10000, 600), (500, 1))
+    est = []
+    for frac in [0.1, 0.6]:
+        img = rng.poisson(base).astype(float)
+        img[:, :int(frac * 600)] = 0          # a black bar, clipped after scaling
+        img[:50, -100:] = 5000.0               # and a flat patch
+        est.append(noise_sd(scale(img, "sqrt")))
+    assert est[1] == pytest.approx(est[0], rel=0.05)
+    with pytest.raises(ValueError):
+        noise_sd(np.zeros((40, 40)))
+
+
+def test_fixed_thickness_with_three_deficient_observers():
+    import cmapkit
+    from cmapkit.bounds import image_bounds
+    from cmapkit.hdrmaps.curve import CurveProblem, optimise, resample_equal, thickness
+    from cmapkit.hdrmaps.paths import PATH_VIEW, from_palette
+    from cmapkit.space import Observer, viewing
+    p = cmapkit.palette(8, background="#7c7c7c", mode="image", observers=[], starts=2, grid=12)
+    b = image_bounds(viewing("screen", "#7c7c7c"))
+    x0 = resample_equal(from_palette(p.rgb).lut[::64], 30)
+    obs = (Observer("protan", 1.0, 0.6), Observer("deutan", 1.0, 0.6),
+           Observer("tritan", 1.0, 0.3))
+    x, info = optimise(x0, rho=6.0, observers=obs, bounds=b, iters=150, penalty=100.0,
+                       least_step=0.5, band=0.3)
+    prob = CurveProblem(30, PATH_VIEW, obs, b)
+    u = prob.coords(x)
+    arc = np.concatenate([[0], np.cumsum(prob.steps(u[0]))])
+    rho = min(thickness(u[o], prob.prio[o], arc) for o in range(4))
+    assert rho >= 6.0 * 0.98
+    st = prob.steps(u[0])
+    assert np.ptp(st) < 0.02 * st.mean()
+    for o in range(1, 4):
+        s = prob.steps(u[o])
+        assert s.max() / s.min() < 1.3 / 0.7 * 1.02
