@@ -103,3 +103,24 @@ def test_noise_estimate_and_blur():
         assert abs(sd / (0.02 * kernel_gain(s)) - 1) < 0.05
     s = blur_for_length(0.02, 1000.0, threshold=3.0)
     assert abs(1000.0 * 0.02 * kernel_gain(s) - 3.0) < 1e-3
+
+
+def test_least_step_for_a_deficient_observer():
+    import cmapkit
+    from cmapkit.bounds import image_bounds
+    from cmapkit.hdrmaps.curve import CurveProblem, optimise, resample_equal
+    from cmapkit.hdrmaps.paths import PATH_VIEW, from_palette
+    from cmapkit.space import Observer, viewing
+    p = cmapkit.palette(8, background="#7c7c7c", mode="image", observers=[], starts=2, grid=12)
+    b = image_bounds(viewing("screen", "#7c7c7c"))
+    x0 = resample_equal(from_palette(p.rgb).lut[::64], 30)
+    de = Observer("deutan", 1.0, 0.6)
+    prob = CurveProblem(30, PATH_VIEW, (de,), b)
+    u0 = prob.coords(x0)
+    step = float(np.mean(prob.steps(u0[0])))
+    assert prob.steps(u0[1]).min() < 0.3 * step
+    x, info = optimise(x0, step=step, observers=(de,), bounds=b, iters=60, penalty=5.0,
+                       least_step=0.5)
+    u = prob.coords(x)
+    assert prob.steps(u[1]).min() > 0.48 * step
+    assert info["step_dev"] < 0.01 * step

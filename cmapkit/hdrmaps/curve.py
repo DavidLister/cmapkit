@@ -6,6 +6,8 @@ coordinates u_i under the path's viewing conditions, and a_ij denotes the
 length of the polyline between points i and j. Its conditions are
 
     |u_{i+1} - u_i| = l                      equal steps (uniform contrast),
+    |u_{i+1} - u_i|_o >= q_o l               least steps for the other
+                                             observers,                  (2)
     |u_i - u_j|_o  >= p_o rho s(a_ij / rho)  for |i - j| >= 2 and every
                                              observer o (thickness),     (1)
 
@@ -19,6 +21,13 @@ a discrete form of the thickness of a curve (Gonzalez and Maddocks 1999).
 Without the second part the curve folds back on itself between samples,
 and the map then reverses over a step or two, as an oscillating map does at
 its peaks.
+
+The steps are equal in normal vision only. An observer with a colour vision
+deficiency sees the same curve projected, and steps along a direction that
+the deficiency removes are short for that observer, so that the map is slow
+there. Condition (2) limits this: q_o = 0 (the default) leaves the observer's
+speed free, and q_o near 1 asks for nearly uniform speed in that observer's
+view as well.
 
 Either rho is maximised at a given step l (a given total length), or l is
 maximised at a given rho. The method is sequential linear programming in a
@@ -86,9 +95,10 @@ def thickness(u, priority=1.0, arc=None):
     return float(pair_limits(d, arc[j] - arc[i]).min())
 
 
-def _state(prob, x, step, rho, bounds):
+def _state(prob, x, step, rho, bounds, q):
     """Objective and violations of a curve: (objective, step deviation,
-    bound violation, thickness shortfall, thickness, steps)."""
+    bound violation, thickness shortfall, thickness, steps, least-step
+    shortfall)."""
     u = prob.coords(x)
     k = len(prob.prio)
     st = prob.steps(u[0])
@@ -97,17 +107,21 @@ def _state(prob, x, step, rho, bounds):
     viol = 0.0
     if bounds is not None:
         viol = max(0.0, -float(bounds.slack(u[0], prob.k_l, np.ones(len(x))).min()))
+    ref = step if step is not None else float(st.mean())
+    slow = max([0.0] + [float((q[o] * ref - prob.steps(u[o])).max()) for o in range(1, k)
+                        if q[o] > 0])
     if step is not None:
-        return rho_now, float(np.abs(st - step).max()), viol, 0.0, rho_now, st
-    return float(st.min()), float(np.ptp(st)), viol, max(0.0, rho - rho_now), rho_now, st
+        return rho_now, float(np.abs(st - step).max()), viol, 0.0, rho_now, st, slow
+    return float(st.min()), float(np.ptp(st)), viol, max(0.0, rho - rho_now), rho_now, st, slow
 
 
 def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, iters=300,
-             radius=0.01, active_margin=4.0, penalty=20.0, verbose=False):
+             radius=0.01, active_margin=4.0, penalty=20.0, least_step=0.0, verbose=False):
     """Improve a curve x (M, 3) in sRGB.
 
     Give `step` to maximise the thickness at that step length, or `rho` to
-    maximise the step at that thickness. The conditions are elastic: each
+    maximise the step at that thickness. least_step is q_o of (2), one value
+    for all the observers or one for each. The conditions are elastic: each
     linear programme may violate them at a cost `penalty` per unit, so that a
     start that does not meet them exactly can still move. Returns (x, info)."""
     from scipy.optimize import linprog
@@ -118,16 +132,17 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
     m = len(x)
     prob = CurveProblem(m, view, observers, bounds)
     k = len(prob.prio)
+    q = np.concatenate([[0.0], np.broadcast_to(np.asarray(least_step, float), (k - 1,))])
     nv = 3 * m + 4
     Z, ES, EB, ET = 3 * m, 3 * m + 1, 3 * m + 2, 3 * m + 3
     i_all, j_all = _pairs(m)
 
     def merit(st):
-        return st[0] - penalty * (st[1] + st[2] + st[3])
+        return st[0] - penalty * (st[1] + st[2] + st[3] + st[6])
 
-    cur = _state(prob, x, step, rho, bounds)
+    cur = _state(prob, x, step, rho, bounds, q)
     history = [dict(it=0, objective=cur[0], dev=cur[1], viol=cur[2], short=cur[3],
-                    rho=cur[4], radius=radius)]
+                    slow=cur[6], rho=cur[4], radius=radius)]
     for it in range(1, iters + 1):
         u, jac = prob.space.jacobian(x)
         rows, rhs = [], []
@@ -152,6 +167,28 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             g[:, ES] = -1.0
             rows.append(g)
             rhs.append(-sign * off)
+        # Least steps (2) for the other observers, elastic:
+        # L_o + lin_o >= q_o l - e_s, with l the step or the free variable Z.
+        for o in range(1, k):
+            if q[o] <= 0:
+                continue
+            eo = u[o, 1:] - u[o, :-1]
+            Lo = np.linalg.norm(eo, axis=1)
+            no = eo / np.maximum(Lo, 1e-12)[:, None]
+            H = np.zeros((m - 1, nv))
+            hi_ = np.einsum("nc,ncd->nd", no, jac[o, :-1])
+            hj_ = np.einsum("nc,ncd->nd", no, jac[o, 1:])
+            for c in range(3):
+                H[idx, 3 * idx + c] = hi_[:, c]
+                H[idx, 3 * (idx + 1) + c] = -hj_[:, c]
+            H[:, ES] = -1.0
+            if step is None:
+                H[:, Z] = q[o]
+                rows.append(H)
+                rhs.append(Lo)
+            else:
+                rows.append(H)
+                rhs.append(Lo - q[o] * step)
         # Thickness (1), every observer, pairs near the bound only. The right
         # side p rho s(a / rho) is linearised in the free variable Z, the
         # thickness or the step (on which the arcs depend), as c1 Z + c0:
@@ -211,11 +248,11 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
                 break
             continue
         x_new = np.clip(x + res.x[:3 * m].reshape(m, 3), 0, 1)
-        new = _state(prob, x_new, step, rho, bounds)
+        new = _state(prob, x_new, step, rho, bounds, q)
         if merit(new) > merit(cur) + 1e-9:
             x, cur = x_new, new
             history.append(dict(it=it, objective=cur[0], dev=cur[1], viol=cur[2],
-                                short=cur[3], rho=cur[4], radius=radius))
+                                short=cur[3], slow=cur[6], rho=cur[4], radius=radius))
             if verbose and len(history) % 10 == 0:
                 print(f"{it}: objective {cur[0]:.3f} rho {cur[4]:.2f} step dev {cur[1]:.3f} "
                       f"bound viol {cur[2]:.3f} r {radius:.4f}", flush=True)
@@ -225,7 +262,8 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             if radius < 1e-6:
                 break
     info = dict(history=history, rho=cur[4], step=float(np.mean(cur[5])),
-                length=float(cur[5].sum()), step_dev=cur[1], bound_violation=cur[2])
+                length=float(cur[5].sum()), step_dev=cur[1], bound_violation=cur[2],
+                slow=cur[6])
     return x, info
 
 
