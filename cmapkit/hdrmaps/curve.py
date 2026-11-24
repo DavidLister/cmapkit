@@ -150,9 +150,14 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
     prob = CurveProblem(m, view, observers, bounds)
     k = len(prob.prio)
     q = np.concatenate([[0.0], np.broadcast_to(np.asarray(least_step, float), (k - 1,))])
-    nv = 3 * m + 4 + (k - 1)
-    Z, ES, EB, ET = 3 * m, 3 * m + 1, 3 * m + 2, 3 * m + 3
-    LO = 3 * m + 4  # l_o of (2) for observers 1 ... k - 1
+    # Variables: the moves dx, then Z (the thickness or the step), the
+    # elastic slacks of the equal steps, the bounds, the thickness and the
+    # other observers' steps, each its own so that violating one condition
+    # does not make the others free, then l_o of (2) for observers 1 ... k - 1.
+    ne = 5 + (k - 1)
+    nv = 3 * m + ne
+    Z, ES, EB, ET, EO = 3 * m, 3 * m + 1, 3 * m + 2, 3 * m + 3, 3 * m + 4
+    LO = 3 * m + 5
     i_all, j_all = _pairs(m)
 
     def merit(st):
@@ -185,8 +190,8 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             g[:, ES] = -1.0
             rows.append(g)
             rhs.append(-sign * off)
-        # Steps (2) for the other observers, elastic in e_s:
-        # (1 - b) l_o - e_s <= L_o + lin_o <= (1 + b) l_o + e_s, l_o >= q_o l,
+        # Steps (2) for the other observers, elastic in e_o:
+        # (1 - b) l_o - e_o <= L_o + lin_o <= (1 + b) l_o + e_o, l_o >= q_o l,
         # with l the step or the free variable Z.
         lo_f = 1.0 if band is None else 1.0 - band
         for o in range(1, k):
@@ -201,13 +206,13 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
             for c in range(3):
                 H[idx, 3 * idx + c] = hi_[:, c]
                 H[idx, 3 * (idx + 1) + c] = -hj_[:, c]
-            H[:, ES] = -1.0
+            H[:, EO] = -1.0
             H[:, LO + o - 1] = lo_f
             rows.append(H)
             rhs.append(Lo)
             if band is not None:
                 Hu = -H
-                Hu[:, ES] = -1.0
+                Hu[:, EO] = -1.0
                 Hu[:, LO + o - 1] = -(1.0 + band)
                 rows.append(Hu)
                 rhs.append(-Lo)
@@ -265,11 +270,11 @@ def optimise(x, step=None, rho=None, observers=(), bounds=None, view=PATH_VIEW, 
                 Bm[:, EB] = -1.0
                 rows.append(Bm)
                 rhs.append(sl[c2])
-        lo = list(np.maximum(-radius, -x.ravel())) + [0.0] * (4 + k - 1)
-        hi = list(np.minimum(radius, 1 - x.ravel())) + [None] * (4 + k - 1)
+        lo = list(np.maximum(-radius, -x.ravel())) + [0.0] * ne
+        hi = list(np.minimum(radius, 1 - x.ravel())) + [None] * ne
         cvec = np.zeros(nv)
         cvec[Z] = -1.0
-        cvec[ES] = cvec[EB] = cvec[ET] = penalty
+        cvec[ES] = cvec[EB] = cvec[ET] = cvec[EO] = penalty
         res = linprog(cvec, A_ub=np.vstack(rows), b_ub=np.concatenate(rhs),
                       bounds=list(zip(lo, hi)), method="highs")
         if res.status != 0:
