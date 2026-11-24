@@ -2,13 +2,19 @@
 
 cmapkit is a Python package for designing colour maps in CAM16-UCS, a colour
 space in which equal distances look equally different. Version 0.1 contains
-one method, MCCP (maximum contrast colour picking), which chooses the colours
-of a categorical plot. Given the number of data series N, it chooses N
+two methods. The first, MCCP (maximum contrast colour picking), chooses the
+colours of a categorical plot. Given the number of data series N, it chooses N
 colours so that the two least distinct colours are as distinct as its
 optimiser can make them. The colours are chosen for that N and for the
 background of the plot. They are also kept apart for readers with the common
 deficiencies of colour vision, to a stated fraction of the separation that
 normal vision receives. cmapkit works with matplotlib.
+
+The second method, hdrmaps, is experimental. It gives long colour maps for
+images of high dynamic range, such as electron micrographs, that are uniform
+in contrast for normal and colour-deficient vision, and blurs the image just
+enough that the map shows its noise at a chosen level. It is described in
+[docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md).
 
 The package is at the alpha stage (version 0.1.0.dev0), and its interface
 may change.
@@ -62,8 +68,22 @@ from a few seconds at small N to one or two minutes at N = 50.
 
 The functions above belong to MCCP and are also available as `cmapkit.mccp`,
 for example `cmapkit.mccp.palette`. The colour space, observers and lightness
-limits (`cmapkit.space`, `cmapkit.bounds`) are shared with the methods to
-come.
+limits (`cmapkit.space`, `cmapkit.bounds`) are shared with hdrmaps.
+
+For an image of high dynamic range:
+
+```python
+import cmapkit.hdrmaps as hdr
+
+rgb, details = hdr.render(image)     # 'path20', blur matched to the noise
+cmap = hdr.colormap("path10")        # a matplotlib colormap
+```
+
+`render` returns sRGB values in [0, 1], and in `details` the noise of the
+image, the blur applied in pixels and the length of the map. Section 8 of
+[docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md)
+gives the other functions, and `tools/compare_images.py` compares two maps on
+an image.
 
 ## 3. Method
 
