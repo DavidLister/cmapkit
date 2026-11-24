@@ -40,8 +40,8 @@ The first maps tried repeated the lightness several times over the range,
 with a steady turn of hue to tell the cycles apart (`OscillatingMap`). A
 rounded sawtooth of four cycles is 684 long, but its curve turns back on
 itself by up to 159° at each peak, so that the map reverses over a few
-steps there. Its separation is 0.1 for protan and 0.2 for deutan
-observers: to them, values a cycle apart look the same. These maps are kept
+steps there. Its separation (Section 6) is nearly zero for protan and
+deutan observers: to them, values a cycle apart look the same. These maps are kept
 in the module `maps` for comparison only.
 
 ## 3. Scaling and noise
@@ -58,7 +58,9 @@ $$D(s) = 1 / \sigma(s). \tag{1}$$
 is filtered with the 3 × 3 mask that is the outer product of (1, −2, 1) with
 itself, which removes planes and nearly removes smooth signal, and the
 median absolute response gives the noise with little influence from edges.
-For white noise σ(s) = σ(0) ‖k_s‖, where ‖k_s‖ is the root sum of squares of
+Pixels whose 3 × 3 neighbourhood is constant, or touches the least or
+greatest value of t (as clipped regions do), are left out, since regions
+without noise would pull the median towards zero. For white noise σ(s) = σ(0) ‖k_s‖, where ‖k_s‖ is the root sum of squares of
 the blur kernel.
 
 ## 4. Length of a map
@@ -79,13 +81,14 @@ value and has not been measured (Section 7).
 Equation (2) is read in either direction. For an image and a blur it gives
 the length; for a map of given length it gives the blur. For an image with
 σ(0) = 0.025 (D(0) = 40), viridis needs a blur of 0.37 pixels, path10 0.72
-and path20 1.29. For a noisier image with σ(0) = 0.07 the blurs are 0.87,
-2.0 and 3.6 pixels. A long map therefore trades resolution for contrast: it
+and path20 1.41. For a noisier image with σ(0) = 0.07 the blurs are 0.87,
+2.0 and 3.9 pixels. A long map therefore trades resolution for contrast: it
 suits an image whose detail is larger than the blur it needs.
 
 ## 5. Construction
 
-Each shipped map is made in four stages by `tools/make_hdrmaps.py`.
+Each shipped map is made in four stages by `tools/make_hdrmaps.py`, which
+gives every setting.
 
 1. Palette. MCCP chooses N colours (N = 10 or 20) with its closest pair as
    distinct as it can make them, in image mode: within the lightness floor
@@ -96,8 +99,9 @@ Each shipped map is made in four stages by `tools/make_hdrmaps.py`.
    neighbour from several starts, then 2-opt), from the darker end.
 3. Curve. The polyline through the colours is resampled to M points at
    equal steps of colour difference (M = 40 or 70).
-4. Optimisation. The points are moved to satisfy the conditions below,
-   then the map is the polyline through them, sampled at 4096 equal steps.
+4. Optimisation. The points are moved to satisfy the conditions below, in
+   several stages, and the map is the polyline through them, sampled at
+   4096 equal steps.
 
 Distances are measured in CAM16-UCS with a lightness weight of 0.77, as in
 MCCP's calibrated modes, under viewing conditions of a mid-grey surround
@@ -126,10 +130,17 @@ normal step. Equal steps for every observer at once cannot be had in
 general: a direction has two degrees of freedom, and fixed ratios of speed
 for three other observers are three conditions on it.
 
-The conditions are met by sequential linear programming in a trust region,
-each linear programme being allowed to violate them at a penalty. With ℓ
-fixed the thickness ρ is maximised; with ρ fixed the step ℓ, and so the
-length, is maximised. path10 is made with ℓ fixed, path20 with ρ = 8.
+The conditions are met by sequential linear programming in a trust region.
+Each linear programme may violate them, each condition at its own penalty,
+so that a start that does not meet them can still move. With ℓ fixed the
+thickness ρ is maximised; with ρ fixed the step ℓ, and so the length, is
+maximised. The stages of both maps begin with q_o alone (no band), which
+leaves the deficient observers' steps uneven. A narrow band asked at once
+of such a curve folds it, so path10 is brought to b = 0.1 through bands of
+0.3, 0.2 and 0.15, with ℓ fixed. path20 is held at ρ = 9 with b = 0.15,
+then lengthened with b = 0.2. The build checks that (3) and (5) hold at the
+points of each map, with the band of its last stage; the measured step
+ratios are 1.22 for path10 and 1.50 for path20, the limits of their bands.
 
 For protan and deutan observers the simulated colours lie nearly on a
 surface, spanned by lightness and a blue to yellow axis, so that in their
@@ -138,8 +149,9 @@ itself without its thickness first falling to zero, so the optimiser cannot
 undo a crossing in their view that is present in the start. For path20 the
 palette is therefore ordered by the larger of the protan and deutan
 distances, rather than by the normal ones: a path that is short in a plane
-does not cross itself. In path20 the tritan priority in (4) is raised to
-0.4, since 0.2 at ρ = 8 would guarantee a separation of only 1.6.
+does not cross itself. path10 uses MCCP's priorities in (4), 0.6 for protan
+and deutan and 0.2 for tritan. path20 uses 0.7 and 0.6, since at its
+thickness MCCP's would guarantee tritan a separation of only about 1.4.
 
 ## 6. Results
 
@@ -149,27 +161,34 @@ range, given by its ratios p95/p5 and max/min; and the separation, the
 least colour difference between parts of the map at least 10 % of the range
 apart. A perfectly uniform map has speed ratios of 1.
 
-| Map | L normal | L protan | L deutan | L tritan | worst p95/p5 | worst max/min | least separation |
-|---|---|---|---|---|---|---|---|
-| grey | 107 | 107 | 107 | 107 | 1.66 | 1.90 | 8.4 |
-| cividis | 106 | 103 | 108 | 98 | 1.39 | 1.94 | 8.3 |
-| viridis | 132 | 110 | 108 | 130 | 2.71 | 3.65 | 5.5 |
-| batlow | 138 | 124 | 128 | 118 | 2.51 | 3.12 | 7.2 |
-| CET-L20 | 164 | 141 | 139 | 134 | 4.53 | 8.15 | 6.4 |
-| turbo | 251 | 225 | 202 | 228 | 12.14 | 25.30 | 2.3 |
-| rounded sawtooth, 4 cycles | 684 | 672 | 663 | 677 | 6.50 | 8.06 | 0.1 |
-| path10 | 304 | 283 | 268 | 277 | 1.40 | 1.51 | 4.5 |
-| path20 | 546 | 427 | 409 | 626 | 1.62 | 1.83 | 3.9 |
+| Map | L normal | L protan | L deutan | L tritan | worst p95/p5 | worst max/min | least separation | J' |
+|---|---|---|---|---|---|---|---|---|
+| grey | 107 | 107 | 107 | 107 | 1.66 | 1.90 | 8.0 | 18 to 100 |
+| cividis | 106 | 103 | 108 | 98 | 1.39 | 1.94 | 8.0 | 27 to 93 |
+| viridis | 132 | 110 | 108 | 130 | 2.71 | 3.65 | 5.2 | 30 to 93 |
+| batlow | 138 | 124 | 128 | 118 | 2.51 | 3.12 | 7.1 | 26 to 91 |
+| CET-L20 | 164 | 141 | 139 | 134 | 4.53 | 8.15 | 6.3 | 32 to 96 |
+| turbo | 251 | 225 | 202 | 228 | 12.14 | 25.30 | 2.2 | 27 to 92 |
+| rounded sawtooth, 4 cycles | 684 | 672 | 663 | 677 | 6.50 | 8.06 | 0.0 | 30 to 90 |
+| path10 | 302 | 286 | 273 | 283 | 1.25 | 1.41 | 3.1 | 50 to 93 |
+| path20 | 594 | 513 | 498 | 617 | 1.52 | 1.69 | 3.8 | 46 to 94 |
 
 The worst ratio and the least separation are taken over the four observers.
-The references are cividis (Nuñez et al. 2018), viridis (Smith and van der
+J' is the lightness of CAM16-UCS under these viewing conditions, in which
+white is 100 and black 18. The table is printed by `tools/hdrmaps_table.py`;
+the rows for batlow and CET-L20 need their published tables, which are not
+distributed with cmapkit. The references are cividis (Nuñez et al. 2018), viridis (Smith and van der
 Walt 2015), batlow (Crameri et al. 2020), CET-L20 (Kovesi 2015) and turbo
 (Mikhailov 2019). For every observer, path10 is 2.5 to 2.9 times as long as
-cividis and path20 3.8 to 6.4 times, with speed ratios close to those of
-cividis and better than those of the other references. Their separations
-are lower than those of the monotone maps, whose separation is about a tenth
-of their length by construction, but above T = 3: two parts of the map 10 %
-of the range apart differ by more than the noise it shows.
+cividis and path20 4.6 to 6.3 times. path10 is more uniform than every
+reference, grey included. path20 is less uniform than cividis by p95/p5,
+though not by max/min, and more uniform than the others. Their separations are lower than those of the monotone maps,
+whose separation is about a tenth of their length by construction. A
+separation above T = 3 means that two parts of the map at least 10 % of the
+range apart differ in colour by more than one standard deviation of the
+noise as the map shows it. Single pixels from the two parts can still be
+confused; the means of regions a few pixels across differ by several
+standard deviations of their noise.
 
 In normal vision alone the same construction gives much longer maps: about
 860 at N = 50 and 1900 at N = 200. For protan and deutan observers these
@@ -190,16 +209,29 @@ protan and deutan observers, from either order of Section 5.
   cannot be read from the colour bar, and a long map is not suited to
   judging magnitudes. It is meant for seeing structure.
 - The lightness floor keeps the maps from dark colours: their J' runs from
-  about 60 to 120, against about 35 to 120 for viridis.
-- The optimum is local, and depends on every setting of the construction
-  and on the linear programming solver. The shipped maps were built with
-  scipy's HiGHS solver on Linux; `tools/make_hdrmaps.py` checks its result
-  against targets (worst p95/p5 at most 1.7, separation at least 3) and
-  writes nothing if they are missed.
-- The sharpest turn of path20 is 123° between successive points, so its
-  colour bar shows some abrupt changes of hue; path10's is 59°.
-- The tritan separation, 4.5 and 4.0, rests on the priority given to that
-  observer and is the lowest of the four.
+  about 46 to 94, against 30 to 93 for viridis.
+- The optimum is local, and sensitive to the settings of the construction
+  and to the linear programming solver: in a trial of path20 with ρ = 10 in
+  place of 9 (and slightly different priorities), the protan and deutan
+  separation fell to zero. The shipped maps were built
+  with scipy's HiGHS solver on Linux. `tools/make_hdrmaps.py` checks its
+  result against conditions (3) and (5) and against targets (worst p95/p5
+  at most 1.7, separation at least 3), and writes nothing if they are
+  missed.
+- The conditions hold at the points of the curve. Between them the map
+  follows straight segments in normal vision, which are not straight for
+  the deficient observers, so the measured speed ratios (Section 6) exceed
+  the limits of the band: max/min is 1.41 against 1.22 for path10, and 1.69
+  against 1.50 for path20.
+- The sharpest turn of path20 is 133° between successive points, so its
+  colour bar shows some abrupt changes of hue; path10's is 89°.
+- The least separations, 3.1 for path10 (tritan) and 3.8 for path20
+  (protan), are close to the target of 3 and rest on the priorities given
+  to the deficient observers.
+- `render` matches the blur to the map's length in normal vision. An
+  observer for whom the map is longer sees more noise: path20 is 617 long
+  for tritan vision against 594, so that tritan observers see the noise at
+  about 3.1 rather than 3.
 - The simulation of colour vision is a model (Machado et al. 2009); the
   maps have not been checked by colour-deficient observers.
 
@@ -212,6 +244,7 @@ hdr.names()                        # ['path10', 'path20']
 rgb, d = hdr.render(image)         # path20, blur matched to the noise at T = 3
 d                                  # sigma0, blur (pixels), length, noise shown
 rgb, d = hdr.render(image, "path10", blur=0)   # no blur
+rgb, d = hdr.render(image, "viridis")          # any matplotlib map, matched blur
 
 cmap = hdr.colormap("path20")      # a matplotlib colormap
 hdr.assess(hdr.path_map("path20").lut)         # measures of Section 6
