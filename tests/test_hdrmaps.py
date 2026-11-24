@@ -124,3 +124,24 @@ def test_least_step_for_a_deficient_observer():
     u = prob.coords(x)
     assert prob.steps(u[1]).min() > 0.48 * step
     assert info["step_dev"] < 0.01 * step
+
+
+def test_band_on_other_observers_steps():
+    import cmapkit
+    from cmapkit.bounds import image_bounds
+    from cmapkit.hdrmaps.curve import CurveProblem, optimise, resample_equal
+    from cmapkit.hdrmaps.paths import PATH_VIEW, from_palette
+    from cmapkit.space import Observer, viewing
+    p = cmapkit.palette(8, background="#7c7c7c", mode="image", observers=[], starts=2, grid=12)
+    b = image_bounds(viewing("screen", "#7c7c7c"))
+    x0 = resample_equal(from_palette(p.rgb).lut[::64], 30)
+    de = Observer("deutan", 1.0, 0.6)
+    prob = CurveProblem(30, PATH_VIEW, (de,), b)
+    step = float(np.mean(prob.steps(prob.coords(x0)[0])))
+    x, info = optimise(x0, step=step, observers=(de,), bounds=b, iters=100, penalty=20.0,
+                       least_step=0.5, band=0.2)
+    s = prob.steps(prob.coords(x)[1])
+    # Steps within +-20 % of a common l_o allow a ratio of 1.5.
+    assert s.max() / s.min() < 1.5 * 1.02
+    assert s.min() > 0.5 * 0.8 * step * 0.98
+    assert info["step_dev"] < 0.02 * step
