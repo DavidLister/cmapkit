@@ -8,8 +8,9 @@ IMAGE is a raw image (a 16-bit TIFF from the microscope, or any grey image).
 It is scaled to [0, 1] (square root by default, which makes shot noise equal
 at every level) and shown through two colour maps, A and B, chosen from the
 lists at the top of the window. The maps are those of matplotlib named in
-BUILTIN, together with every lookup table (an .npy array of sRGB values,
-n x 3, in [0, 1]) in the directories given with --maps.
+BUILTIN, the maps shipped with cmapkit.hdrmaps, and every lookup table (an
+.npy array of sRGB values, n x 3, in [0, 1]) in the directories given with
+--maps.
 
 The whole image is shown through A. Under the pointer a loupe shows the
 region about the pointer, divided down the middle: A on the left and B on
@@ -66,6 +67,9 @@ def load_maps(dirs):
         cm = plt.get_cmap(name)
         n = cm.N if hasattr(cm, "colors") else 1024
         maps[name] = cm(np.linspace(0, 1, n))[:, :3].astype(np.float32)
+    from cmapkit.hdrmaps import names, path_map
+    for name in names():
+        maps[name] = path_map(name).lut.astype(np.float32)
     for d in dirs:
         for f in sorted(Path(d).glob("*.npy")):
             lut = np.load(f).astype(np.float32)
@@ -100,9 +104,10 @@ class Renderer:
     def data(self, blur):
         blur = round(float(blur), 2)
         if blur not in self.t:
+            # The blur is applied to the scaled data, in which the noise model
+            # of cmapkit.hdrmaps.noise holds, as in cmapkit.hdrmaps.render.
             from scipy.ndimage import gaussian_filter
-            from cmapkit.hdrmaps import scale
-            self.t[blur] = scale(gaussian_filter(self.raw, blur), self.kind).astype(np.float32)
+            self.t[blur] = gaussian_filter(self.t[0.0], blur)
         return self.t[blur]
 
     def image(self, name, lut, blur):

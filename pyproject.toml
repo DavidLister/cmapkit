@@ -1,7 +1,7 @@
 [project]
 name = "cmapkit"
 dynamic = ["version"]
-description = "Colour maps designed in CAM16-UCS, beginning with categorical palettes whose closest pair is as distinct as possible, including for colour-blind readers"
+description = "Colour maps designed in CAM16-UCS: categorical palettes whose closest pair is as distinct as possible, and long maps for images of high dynamic range, both for colour-blind readers too"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "NOTICE"]
@@ -28,13 +28,14 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["cmapkit", "cmapkit.mccp"]
+packages = ["cmapkit", "cmapkit.mccp", "cmapkit.hdrmaps"]
 
 [tool.setuptools.dynamic]
 version = {attr = "cmapkit.__version__"}
 
 [tool.setuptools.package-data]
 "cmapkit.mccp" = ["data/*.json"]
+"cmapkit.hdrmaps" = ["data/*.json"]
 
 [tool.pytest.ini_options]
 markers = ["slow: takes more than a few seconds (ring layout search)"]

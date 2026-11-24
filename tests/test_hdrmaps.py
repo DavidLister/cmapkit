@@ -145,3 +145,36 @@ def test_band_on_other_observers_steps():
     assert s.max() / s.min() < 1.5 * 1.02
     assert s.min() > 0.5 * 0.8 * step * 0.98
     assert info["step_dev"] < 0.02 * step
+
+
+@pytest.mark.parametrize("name", ["path10", "path20"])
+def test_shipped_maps_are_uniform_and_separated_for_every_observer(name):
+    from cmapkit.hdrmaps import assess, info, path_map
+    got = assess(path_map(name).lut)
+    rec = info(name)["measures"]
+    for obs, v in got.items():
+        assert v["speed_p95_p5"] <= 1.7
+        assert v["separation"] >= 3.0
+        assert v["length"] > 250
+        # The data file records what the map is.
+        assert v["length"] == pytest.approx(rec[obs]["length"], rel=1e-3)
+
+
+def test_assess_of_a_grey_map_is_the_same_for_every_observer():
+    from cmapkit.hdrmaps import assess
+    g = np.repeat(np.linspace(0, 1, 256)[:, None], 3, axis=1)
+    m = assess(g)
+    lengths = [v["length"] for v in m.values()]
+    assert max(lengths) - min(lengths) < 1e-6 * max(lengths)
+
+
+def test_render_matches_the_blur_to_the_noise():
+    from cmapkit.hdrmaps import render
+    rng = np.random.default_rng(2)
+    img = rng.poisson(np.tile(np.linspace(100, 10000, 400), (300, 1))).astype(float)
+    rgb, d = render(img, "path20", threshold=3.0)
+    assert rgb.shape == (300, 400, 3) and rgb.min() >= 0 and rgb.max() <= 1
+    assert d["blur"] > 0 and d["noise_shown"] == pytest.approx(3.0, rel=1e-3)
+    grey = np.repeat(np.linspace(0, 1, 256)[:, None], 3, axis=1)
+    _, d0 = render(img, grey, blur=0)
+    assert d0["blur"] == 0 and d0["length"] < d["length"]
