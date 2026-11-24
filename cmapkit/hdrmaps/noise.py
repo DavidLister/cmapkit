@@ -58,6 +58,25 @@ Image Understanding 64 (1996) 300-302.
 
 import numpy as np
 
+
+def scale(image, kind="log", low=0.1, high=99.9):
+    """Values in [0, 1] from a raw image: clipped at the given percentiles,
+    then scaled linearly, by square root, or logarithmically. The square root
+    makes shot noise (variance proportional to the signal) equal at every
+    level."""
+    v = np.asarray(image, float)
+    lo, hi = np.percentile(v, [low, high])
+    v = np.clip(v, lo, hi)
+    if kind == "sqrt":
+        lo, v, hi = (np.sqrt(np.maximum(x, 0)) for x in (lo, v, hi))
+        return (v - lo) / (hi - lo)
+    if kind == "log":
+        off = 1.0 - min(lo, 0.0)
+        return (np.log(v + off) - np.log(lo + off)) / (np.log(hi + off) - np.log(lo + off))
+    if kind == "linear":
+        return (v - lo) / (hi - lo)
+    raise ValueError(f"Unknown scale {kind!r}")
+
 from .paths import PATH_VIEW
 
 

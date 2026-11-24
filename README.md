@@ -12,8 +12,8 @@ normal vision receives. cmapkit works with matplotlib.
 
 The second method, hdrmaps, is experimental. It gives long colour maps for
 images of high dynamic range, such as electron micrographs, that are uniform
-in contrast for normal and colour-deficient vision, and blurs the image just
-enough that the map shows its noise at a chosen level. It is described in
+in contrast for normal and colour-deficient vision, with a length that can
+be matched to the noise of the image. It is described in
 [docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md).
 
 The package is at the alpha stage (version 0.1.0.dev0), and its interface
@@ -75,12 +75,13 @@ For an image of high dynamic range:
 ```python
 import cmapkit.hdrmaps as hdr
 
-rgb, details = hdr.render(image)     # 'path20', blur matched to the noise
+rgb, details = hdr.render(image)     # 'path20', no blur
 cmap = hdr.colormap("path10")        # a matplotlib colormap
 ```
 
 `render` returns sRGB values in [0, 1], and in `details` the noise of the
-image, the blur applied in pixels and the length of the map. Section 8 of
+image, the blur applied in pixels (none unless `blur` is given) and the
+length of the map. Section 8 of
 [docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md)
 gives the other functions, and `tools/compare_images.py` compares two maps on
 an image.

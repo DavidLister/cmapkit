@@ -18,7 +18,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from cmapkit.hdrmaps import OscillatingMap, assess, names, path_map  # noqa: E402
+from cmapkit.hdrmaps import assess, names, path_map  # noqa: E402
 from cmapkit.hdrmaps.paths import PATH_VIEW  # noqa: E402
 from cmapkit.space import CAM16UCS  # noqa: E402
 
@@ -37,7 +37,6 @@ def main():
             if p.exists():
                 maps[label] = np.load(p)[:, :3]
     maps["turbo"] = matplotlib.colormaps["turbo"](np.linspace(0, 1, 1024))[:, :3]
-    maps["rounded sawtooth, 4 cycles"] = OscillatingMap("rounded sawtooth", cycles=4).lut()
     for n in names():
         maps[n] = path_map(n).lut
     ucs = CAM16UCS(PATH_VIEW)

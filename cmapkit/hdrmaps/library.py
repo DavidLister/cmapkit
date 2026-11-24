@@ -14,8 +14,7 @@ from importlib.resources import files
 
 import numpy as np
 
-from .maps import scale
-from .noise import blur_for_length, noise_sd
+from .noise import blur_for_length, noise_sd, scale
 from .paths import PathMap
 
 
@@ -71,7 +70,7 @@ def _lut(cmap):
     return lut[:, :3]
 
 
-def render(image, cmap="path20", kind="sqrt", blur="matched", threshold=3.0, low=0.1,
+def render(image, cmap="path20", kind="sqrt", blur=0.0, threshold=3.0, low=0.1,
            high=99.9):
     """An image in colour, through a shipped map or a table of sRGB colours.
 
@@ -80,17 +79,20 @@ def render(image, cmap="path20", kind="sqrt", blur="matched", threshold=3.0, low
         noise equal at every level, as the noise model assumes.
     cmap: the name of a shipped map, a matplotlib colormap or its name, or
         sRGB values (n, 3) in [0, 1] at equal steps of the data.
-    blur: 'matched' for the Gaussian blur (in pixels) at which the map shows
+    blur: the standard deviation of a Gaussian blur in pixels, 0 (the
+        default) for none, or 'matched' for the blur at which the map shows
         the noise at `threshold` colour differences per noise standard
-        deviation in normal vision (noise.py, equation (2)), or a number of
-        pixels, or 0.
+        deviation in normal vision (noise.py, equation (2)). A blur changes
+        the image, and in a scientific image the change can be taken for
+        structure; without it the eye averages neighbouring pixels, and the
+        map still serves when single pixels are not resolved.
 
     Returns (rgb, details): rgb is (H, W, 3) in [0, 1], and details gives
-    the noise sigma0 of the scaled image, the blur applied, the map's length
-    L in normal vision, and the colour difference per noise standard
-    deviation shown after the blur, in normal vision. Observers for whom the
-    map is longer (path20 for tritan vision) see the noise in proportion to
-    their length."""
+    the noise sigma0 of the scaled image (nan if it cannot be estimated),
+    the blur applied, the map's length L in normal vision, and the colour
+    difference per noise standard deviation shown, in normal vision, after
+    the blur. Observers for whom the map is longer (path20 for tritan
+    vision) see the noise in proportion to their length."""
     from scipy.ndimage import gaussian_filter
     from .noise import kernel_gain, map_length
 
@@ -118,7 +120,7 @@ def render(image, cmap="path20", kind="sqrt", blur="matched", threshold=3.0, low
         s = float(blur)
         try:
             sigma0 = noise_sd(t)
-        except ValueError:      # no noise to measure; the blur was given
+        except ValueError:      # no noise to measure, and none is needed
             sigma0 = float("nan")
     if s > 0:
         t = gaussian_filter(t, s)

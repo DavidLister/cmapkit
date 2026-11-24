@@ -31,18 +31,19 @@ The maps of this subpackage are long, winding maps with three properties:
   observers;
 - separated: parts of the map far apart in the data stay distinct in
   colour, for every one of these observers;
-- matched to the noise: the image is blurred just enough that the map
-  shows its noise at a chosen level (Sections 3 and 4).
+- matched to the noise: the length a map needs is set by the noise of
+  the image (Sections 3 and 4).
 
 ## 2. An earlier approach
 
 The first maps tried repeated the lightness several times over the range,
-with a steady turn of hue to tell the cycles apart (`OscillatingMap`). A
-rounded sawtooth of four cycles is 684 long, but its curve turns back on
-itself by up to 159° at each peak, so that the map reverses over a few
-steps there. Its separation (Section 6) is nearly zero for protan and
-deutan observers: to them, values a cycle apart look the same. These maps are kept
-in the module `maps` for comparison only.
+with a steady turn of hue to tell the cycles apart. A rounded sawtooth of
+four cycles is 684 long, but its curve turns back on itself by up to 159°
+at each peak, so that the map reverses over a few steps there. Its least
+separation (defined in Section 6) is nearly zero for protan and deutan
+observers: to them, values a cycle apart look the same. Its worst speed
+ratio p95/p5 is 6.5. The approach was abandoned, and its code (the module
+`cmapkit/hdrmaps/maps.py`) was removed after commit bf54cd9.
 
 ## 3. Scaling and noise
 
@@ -84,6 +85,14 @@ the length; for a map of given length it gives the blur. For an image with
 and path20 1.41. For a noisier image with σ(0) = 0.07 the blurs are 0.87,
 2.0 and 3.9 pixels. A long map therefore trades resolution for contrast: it
 suits an image whose detail is larger than the blur it needs.
+
+The blur is not applied by default. It changes the image, and in a
+scientific image the change can be taken for structure. Without it the
+noise is shown at L σ(0) rather than T, but the eye averages neighbouring
+pixels, so that when the image is viewed at a scale at which single pixels
+are not resolved the map still shows detail at every level. Equation (2)
+then serves to judge how plainly the noise will show, and the matched blur
+is available when it is wanted.
 
 ## 5. Construction
 
@@ -169,7 +178,6 @@ apart. A perfectly uniform map has speed ratios of 1.
 | batlow | 138 | 124 | 128 | 118 | 2.51 | 3.12 | 7.1 | 26 to 91 |
 | CET-L20 | 164 | 141 | 139 | 134 | 4.53 | 8.15 | 6.3 | 32 to 96 |
 | turbo | 251 | 225 | 202 | 228 | 12.14 | 25.30 | 2.2 | 27 to 92 |
-| rounded sawtooth, 4 cycles | 684 | 672 | 663 | 677 | 6.50 | 8.06 | 0.0 | 30 to 90 |
 | path10 | 302 | 286 | 273 | 283 | 1.25 | 1.41 | 3.1 | 50 to 93 |
 | path20 | 594 | 513 | 498 | 617 | 1.52 | 1.69 | 3.8 | 46 to 94 |
 
@@ -228,8 +236,8 @@ protan and deutan observers, from either order of Section 5.
 - The least separations, 3.1 for path10 (tritan) and 3.8 for path20
   (protan), are close to the target of 3 and rest on the priorities given
   to the deficient observers.
-- `render` matches the blur to the map's length in normal vision. An
-  observer for whom the map is longer sees more noise: path20 is 617 long
+- When asked to, `render` matches the blur to the map's length in normal
+  vision. An observer for whom the map is longer sees more noise: path20 is 617 long
   for tritan vision against 594, so that tritan observers see the noise at
   about 3.1 rather than 3.
 - The simulation of colour vision is a model (Machado et al. 2009); the
@@ -241,10 +249,10 @@ protan and deutan observers, from either order of Section 5.
 import cmapkit.hdrmaps as hdr
 
 hdr.names()                        # ['path10', 'path20']
-rgb, d = hdr.render(image)         # path20, blur matched to the noise at T = 3
+rgb, d = hdr.render(image)         # path20, no blur
 d                                  # sigma0, blur (pixels), length, noise shown
-rgb, d = hdr.render(image, "path10", blur=0)   # no blur
-rgb, d = hdr.render(image, "viridis")          # any matplotlib map, matched blur
+rgb, d = hdr.render(image, "path10", blur="matched")   # noise shown at T = 3
+rgb, d = hdr.render(image, "viridis", blur=1.5)        # any matplotlib map
 
 cmap = hdr.colormap("path20")      # a matplotlib colormap
 hdr.assess(hdr.path_map("path20").lut)         # measures of Section 6
@@ -252,9 +260,10 @@ hdr.info("path20")                 # what was recorded when it was made
 ```
 
 `render` scales the image by its square root, estimates its noise, blurs it
-as equation (2) requires and maps it to sRGB in [0, 1]. `tools/compare_images.py`
-shows an image through two maps side by side, with a loupe, histograms and
-the blur of each map matched to the noise.
+if asked (with `blur="matched"`, as equation (2) requires) and maps it to sRGB
+in [0, 1]. `tools/compare_images.py` shows an image through two maps side by
+side, with a loupe and histograms, and optionally with the blur of each map
+matched to the noise.
 
 ## References
 

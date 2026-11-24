@@ -20,8 +20,11 @@ import numpy as np
 
 from dataclasses import replace
 
-from ..space import CAM16UCS, linear_to_srgb
-from .maps import IMAGE_VIEW
+from ..space import PRESETS, CAM16UCS, Viewing, linear_to_srgb
+
+# An image fills most of the screen, so the adapting field is taken as a
+# mid grey (Y_b = 20) rather than a plot background.
+IMAGE_VIEW = Viewing(background_y=20.0, **PRESETS["screen"])
 
 # Steps are measured with the lightness weight of MCCP's calibrated modes, so
 # that the path is uniform in the measure its colours were spaced in.

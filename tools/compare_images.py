@@ -19,8 +19,8 @@ the division. Below the image are, for A and for B, the histogram of the
 scaled data with each bar in the colour the map gives it, above the map
 itself; a line on each marks the value under the pointer.
 
-Each map may be shown without blur, with a fixed Gaussian blur, or with the
-blur at which it shows the noise at T colour differences per noise standard
+Each map may be shown without blur (the default), with a fixed Gaussian
+blur, or with the blur at which it shows the noise at T colour differences per noise standard
 deviation (cmapkit.hdrmaps.noise): a long map then gets more blur than a
 short one.
 
@@ -156,7 +156,7 @@ class Viewer:
         self.box_b.setCurrentIndex(len(self.names) - 1)
         self.blur_mode = QtWidgets.QComboBox()
         self.blur_mode.addItems(["no blur", "blur matched to noise", "fixed blur"])
-        self.blur_mode.setCurrentIndex(1)
+        self.blur_mode.setCurrentIndex(0)
         self.spin_t = QtWidgets.QDoubleSpinBox(minimum=0.5, maximum=50, value=3.0, singleStep=0.5)
         self.spin_s = QtWidgets.QDoubleSpinBox(minimum=0.0, maximum=10, value=1.5, singleStep=0.25)
         for text, w in [("A", self.box_a), ("B", self.box_b), ("", self.blur_mode),
