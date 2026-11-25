@@ -4,8 +4,8 @@ Usage:
 
     python tools/hdrmaps_figures.py [--out DIR]
 
-Both figures draw each map 1024 pixels long, one pixel per entry of the
-tables that hdrmaps.colormap gives.
+hdrmaps.png draws each map 1024 pixels long, one pixel per entry of the
+tables that hdrmaps.colormap gives; hdrmaps_ripple.png draws it 2048 long.
 
 hdrmaps.png shows the shipped maps and three references as colour bars,
 each as a group of four: normal vision and simulated protan, deutan and
@@ -13,17 +13,20 @@ tritan vision (Machado et al. 2009, at full severity).
 
 hdrmaps_ripple.png shows, for each map, a band in which the data rise
 steadily from left to right and carry a sine of constant amplitude, 0.01
-of the range. The band is divided into five strips in which the period of
-the sine is 64, 32, 16, 8 and 4 pixels, from the top. In the lower half of
-each strip but the last, the sine of the strip fades out as that of the
-next strip fades in, so that one strip passes into the next without an
-edge. The colour difference by which the map shows the sine at a point is its speed
-there times the amplitude (docs/hdrmaps.md, section 4), so a uniform map
+of the range. The band is divided into six strips in which the period of
+the sine is 64, 32, 16, 8, 4 and 2 pixels, from the top; the sines are in
+cosine phase, so that the last alternates between its greatest and least
+values from pixel to pixel. In the lower half of each strip but the last,
+the sine of the strip fades out as that of the next strip fades in, so
+that one strip passes into the next without an edge. The colour
+difference by which the map shows the sine at a point is its speed there
+times the amplitude (docs/hdrmaps.md, section 4), so a uniform map
 shows the sine equally plainly across the band, and the strength of the
 sine at one place against another is the ratio of the map's speeds there.
 A long map shows the sine more plainly than a short one throughout. In the
-rows of highest frequency the eye averages the sine away when the image is
-seen at a distance, as it averages noise. The figure is drawn one image
+strips of shortest period the eye averages the sine away, as it averages
+the noise of an image, and the strip shows the mean colour; the period at
+which this happens depends on the display and the viewing distance. The figure is drawn one image
 pixel to one screen pixel and should be viewed at full size.
 """
 
@@ -41,9 +44,10 @@ from cmapkit.space import Observer, linear_to_srgb, srgb_to_linear  # noqa: E402
 MAPS = ["path10", "path20", "grey", "cividis", "viridis", "turbo"]
 OBSERVERS = ["normal", "protan", "deutan", "tritan"]
 
-WIDTH = 1024                  # pixels across a map: one per entry of hdrmaps.colormap
-AMPLITUDE = 0.01              # of the data range, so that one sine spans 0.02
-PERIODS = (64, 32, 16, 8, 4)  # pixels, one strip of each from the top of a band
+WIDTH = 1024                     # pixels across a map: one per entry of hdrmaps.colormap
+RIPPLE_WIDTH = 2048              # pixels across a band of the ripple figure
+AMPLITUDE = 0.01                 # of the data range, so that one sine spans 0.02
+PERIODS = (64, 32, 16, 8, 4, 2)  # pixels, one strip of each from the top of a band
 
 
 def lut(name, n=WIDTH):
@@ -84,8 +88,8 @@ def ripple_data(width, height, amplitude=AMPLITUDE, periods=PERIODS):
     rise[k == len(periods) - 1] = 0
     p = np.asarray(periods, float)
     nxt = p[np.minimum(k + 1, len(p) - 1)]
-    sine = (1 - rise)[:, None] * np.sin(2 * np.pi * x / p[k][:, None])
-    added = rise[:, None] * np.sin(2 * np.pi * x / nxt[:, None])
+    sine = (1 - rise)[:, None] * np.cos(2 * np.pi * x / p[k][:, None])
+    added = rise[:, None] * np.cos(2 * np.pi * x / nxt[:, None])
     return ramp + amplitude * (sine + added)
 
 
@@ -103,13 +107,13 @@ def _axes(fig, x, y, w, h, W, H):
     return ax
 
 
-def ripple_figure(path, width=WIDTH, band=100, gap=14, label=90):
+def ripple_figure(path, width=RIPPLE_WIDTH, band=120, gap=14, label=90):
     W = label + width + 10
     H = gap + len(MAPS) * (band + gap)
     fig = _pixel_figure(W, H)
     t = ripple_data(width, band)
     for k, name in enumerate(MAPS):
-        table = lut(name)
+        table = lut(name, width)
         idx = np.clip(np.round(t * (len(table) - 1)), 0, len(table) - 1).astype(int)
         y = gap + k * (band + gap)
         ax = _axes(fig, label, y, width, band, W, H)

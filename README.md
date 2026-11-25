@@ -43,16 +43,18 @@ vision and in simulated protan, deutan and tritan vision.
 The second figure, a variant of the test image of Kovesi (2015), shows how
 plainly each map shows a small difference in the data. In each band the data
 rise from left to right and carry a sine of constant amplitude, 0.01 of the
-range, whose period is 64, 32, 16, 8 and 4 pixels in five strips from the top.
-In the lower half of each strip but the last, its sine fades out as that of
-the next fades in, so that one strip passes into the next without an edge. The
-colour difference by which a map shows the sine is proportional to its speed
-there, the colour difference per unit of data, so a uniform map shows it
+range, whose period is 64, 32, 16, 8, 4 and 2 pixels in six strips from the
+top. In the lower half of each strip but the last, its sine fades out as that
+of the next fades in, so that one strip passes into the next without an edge.
+The colour difference by which a map shows the sine is proportional to its
+speed there, the colour difference per unit of data, so a uniform map shows it
 equally plainly across the band, and a long map shows it more plainly than a
 short one. Turbo shows the sine most plainly at its blue end, where its speed
 is about 400, and least in its green middle, where it is about 150 (in normal
 vision); grey and cividis are nearly uniform, but at about 110 they show it
-faintly throughout. The figure should be viewed at full size
+faintly throughout. In the strips of shortest period the eye averages the sine
+away, as it averages the noise of an image, and sees the mean colour. The
+bands are 2048 pixels wide, and the figure should be viewed at full size
 (`tools/hdrmaps_figures.py` draws both figures).
 
 ![Small differences shown by each map: a ramp carrying a sine of constant amplitude, in strips of shorter period from the top of each band](docs/img/hdrmaps_ripple.png)
