@@ -150,7 +150,7 @@ chose the weight $K_L = 0.77$ after comparing ring figures
 ([test-figures.md](test-figures.md)) drawn with it, with the unweighted
 space, and with the constants of Luo et al. (2006) for large differences.
 
-![Palettes of the sRGB mode for N from 3 to 30](img/srgb_palettes.png)
+![Default palettes of the sRGB mode for N from 3 to 30](img/srgb_palettes.png)
 
 ![Least separation against N](img/srgb_vs_n.png)
 

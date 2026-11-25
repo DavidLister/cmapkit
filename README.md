@@ -10,25 +10,27 @@ background of the plot. They are also kept apart for readers with the common
 deficiencies of colour vision, to a stated fraction of the separation that
 normal vision receives. cmapkit works with matplotlib.
 
-The first figure below compares a palette of seven colours from MCCP, on
-white, with six common palettes, of which the longer ones give their first
-seven colours. Each disc holds every colour of a palette once in each ring,
-arranged so that every pair of colours meets at least twice
+The first figure below compares MCCP, on white, with six common palettes,
+each drawn at the number of colours for which it was designed: Tol bright
+(7), Okabe–Ito (8, with black), ColorBrewer Dark2 (8) and Set1 (9), and
+matplotlib's tab10 and petroff10 (10). The MCCP palette of the same N
+stands before each group. Each disc holds every colour of a palette once in
+each ring, arranged so that every pair of colours meets at least twice
 ([docs/test-figures.md](https://github.com/DavidLister/cmapkit/blob/main/docs/test-figures.md)). The rows show normal vision
 and simulated deutan, protan and tritan vision. The number under each disc is
 the least colour difference between two colours of the palette for that
 observer, in the measure that MCCP maximises, so that the comparison favours
 MCCP by construction; [docs/results.md](https://github.com/DavidLister/cmapkit/blob/main/docs/results.md) compares the
-palettes under other measures. MCCP's colours are the most distinct for
-normal, deutan and protan vision. For tritan vision, to which it gives a
-lower priority (Section 3), its least difference of 12.7 is close to those
-of tab10 and Okabe–Ito and below the 21.2 of petroff10. The second figure
-shows the default palettes for N from 3 to 30. `tools/palette_rings.py` draws
-the first.
+palettes under other measures. At each N, MCCP's colours are the most
+distinct for normal, deutan and protan vision. For tritan vision, to which it
+gives a lower priority (Section 3), MCCP is ahead at N of 7 to 9 and behind
+at N = 10, where its least difference of 11.0 is below the 13.2 of tab10 and
+the 20.1 of petroff10. The second figure shows the default palettes for N
+from 3 to 30. `tools/palette_rings.py` draws the first.
 
-![Palettes of seven colours on white, from MCCP and six common palettes, as ring discs in normal vision and in simulated deutan, protan and tritan vision, with the least colour difference under each](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/rings_compare.png)
+![MCCP beside six common palettes, each at its designed number of colours, as ring discs in normal vision and in simulated deutan, protan and tritan vision, with the least colour difference under each](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/rings_compare.png)
 
-![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/srgb_palettes.png)
+![Default palettes for N from 3 to 30 on white](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/srgb_palettes.png)
 
 The second method, hdrmaps, is experimental. It gives long colour maps for
 images of high dynamic range, such as electron micrographs, that are uniform

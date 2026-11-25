@@ -1,5 +1,5 @@
-"""Palettes and least separation against N for the sRGB mode, with and
-without the colour-vision observers. Reads bench/compare.py output.
+"""The default palettes of the sRGB mode, and least separation against N
+with and without the colour-vision observers. Reads bench/compare.py output.
 
 Usage: python3 -m bench.sweep_plot figures/bench.json figures
 """
@@ -32,19 +32,18 @@ def ordered(hexes):
 
 
 def plot_palettes(data, path):
-    fig, axes = plt.subplots(1, 2, figsize=(16, 9))
-    for ax, (src, title) in zip(axes, SOURCES):
-        rows = rows_for(data, src)
-        nmax = max(r["n"] for r in rows)
-        for k, r in enumerate(rows):
-            y = -k
-            for i, c in enumerate(ordered(r["colours"])):
-                ax.add_patch(Rectangle((i, y), 0.92, 0.85, facecolor=c, edgecolor="none"))
-            ax.text(-0.4, y + 0.42, f"N = {r['n']}", ha="right", va="center", fontsize=8)
-        ax.set_xlim(-2.2, nmax + 0.2)
-        ax.set_ylim(-len(rows) + 0.8, 1.1)
-        ax.set_title(title, fontsize=10)
-        ax.axis("off")
+    """The default palettes (deutan, protan 0.6; tritan 0.2), one row per N."""
+    rows = rows_for(data, SOURCES[0][0])
+    nmax = max(r["n"] for r in rows)
+    fig, ax = plt.subplots(figsize=(9, 9))
+    for k, r in enumerate(rows):
+        y = -k
+        for i, c in enumerate(ordered(r["colours"])):
+            ax.add_patch(Rectangle((i, y), 0.92, 0.85, facecolor=c, edgecolor="none"))
+        ax.text(-0.4, y + 0.42, f"N = {r['n']}", ha="right", va="center", fontsize=8)
+    ax.set_xlim(-2.2, nmax + 0.2)
+    ax.set_ylim(-len(rows) + 0.8, 1.1)
+    ax.axis("off")
     fig.tight_layout()
     fig.savefig(path, dpi=110)
     plt.close(fig)

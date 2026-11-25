@@ -3,16 +3,18 @@
 
 Usage:
 
-    python tools/palette_rings.py [--n N] [--out PATH]
+    python tools/palette_rings.py [--out PATH]
 
-Each palette of N colours (7 by default, the size of Okabe-Ito and Tol
-bright; longer palettes give their first N) is drawn as the ring disc of
-docs/test-figures.md, in normal vision and in simulated deutan, protan and
-tritan vision (Machado et al. 2009, at full severity), on white. Under each
-disc is the least colour difference between two colours of the palette for
-that observer, in CAM16-UCS with lightness weight 0.77, the measure that
-MCCP's sRGB mode maximises. The comparison therefore favours MCCP by
-construction; docs/results.md compares the palettes under other measures.
+Each palette is drawn at the length for which it was designed: Tol bright 7,
+Okabe-Ito 8 (with black), Dark2 8, Set1 9, tab10 and petroff10 10. The MCCP
+palette of the same N, on white, stands before each group of equal length.
+Every palette is drawn as the ring disc of docs/test-figures.md, in normal
+vision and in simulated deutan, protan and tritan vision (Machado et al.
+2009, at full severity), on white. Under each disc is the least colour
+difference between two colours of the palette for that observer, in
+CAM16-UCS with lightness weight 0.77, the measure that MCCP's sRGB mode
+maximises. The comparison therefore favours MCCP by construction;
+docs/results.md compares the palettes under other measures.
 """
 
 import argparse
@@ -31,7 +33,9 @@ BACKGROUND = "#ffffff"
 OBSERVERS = [Observer(), Observer("deutan"), Observer("protan"), Observer("tritan")]
 
 
-def palettes(n):
+def palettes():
+    """Name and colours of each palette, in order of length, with the MCCP
+    palette of each length before the others of that length."""
     import matplotlib
     import matplotlib.style
     from matplotlib.colors import to_hex
@@ -39,19 +43,24 @@ def palettes(n):
     def cmap(name):
         return [to_hex(c) for c in matplotlib.colormaps[name].colors]
 
-    out = {
-        "MCCP": cmapkit.palette(n, background=BACKGROUND).hex,
-        "tab10\n(matplotlib default)": cmap("tab10"),
-        "petroff10\n(matplotlib style)": list(
-            matplotlib.style.library["petroff10"]["axes.prop_cycle"].by_key()["color"]),
-        "Okabe-Ito": ["#e69f00", "#56b4e9", "#009e73", "#f0e442", "#0072b2", "#d55e00",
-                      "#cc79a7"],
-        "Tol bright": ["#4477aa", "#ee6677", "#228833", "#ccbb44", "#66ccee", "#aa3377",
-                       "#bbbbbb"],
-        "ColorBrewer\nSet1": cmap("Set1"),
-        "ColorBrewer\nDark2": cmap("Dark2"),
-    }
-    return {k: [c.lower() for c in v[:n]] for k, v in out.items() if len(v) >= n}
+    common = [
+        ("Tol bright", ["#4477aa", "#ee6677", "#228833", "#ccbb44", "#66ccee", "#aa3377",
+                        "#bbbbbb"]),
+        ("Okabe-Ito", ["#e69f00", "#56b4e9", "#009e73", "#f0e442", "#0072b2", "#d55e00",
+                       "#cc79a7", "#000000"]),
+        ("ColorBrewer\nDark2", cmap("Dark2")),
+        ("ColorBrewer\nSet1", cmap("Set1")),
+        ("tab10\n(matplotlib default)", cmap("tab10")),
+        ("petroff10\n(matplotlib style)", list(
+            matplotlib.style.library["petroff10"]["axes.prop_cycle"].by_key()["color"])),
+    ]
+    out = []
+    for name, hexes in sorted(common, key=lambda e: len(e[1])):
+        n = len(hexes)
+        if not out or len(out[-1][1]) != n:
+            out.append((f"MCCP {n}", cmapkit.palette(n, background=BACKGROUND).hex))
+        out.append((name, hexes))
+    return [(k, [c.lower() for c in v]) for k, v in out]
 
 
 def least_distance(hexes, observer):
@@ -61,17 +70,17 @@ def least_distance(hexes, observer):
     return float(d[np.triu_indices(len(u), 1)].min())
 
 
-def figure(n, path):
+def figure(path):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    pals = palettes(n)
+    pals = palettes()
     view = Space(viewing("screen", BACKGROUND, lightness_weight=0.77))
     fig, axes = plt.subplots(len(OBSERVERS), len(pals),
                              figsize=(1.45 * len(pals) + 0.7, 1.75 * len(OBSERVERS) + 0.5))
     fig.patch.set_facecolor(BACKGROUND)
-    for c, (name, hexes) in enumerate(pals.items()):
+    for c, (name, hexes) in enumerate(pals):
         u = view.coords(hex_to_rgb(hexes))[0]
         grid = ring_layout(np.linalg.norm(u[:, None] - u[None], axis=-1))
         axes[0, c].set_title(name, fontsize=10, pad=8)
@@ -90,12 +99,11 @@ def figure(n, path):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--n", type=int, default=7)
     ap.add_argument("--out", default=str(Path(__file__).resolve().parents[1]
                                          / "docs/img/rings_compare.png"))
     args = ap.parse_args()
-    pals = figure(args.n, args.out)
-    for name, hexes in pals.items():
+    pals = figure(args.out)
+    for name, hexes in pals:
         print(name.replace("\n", " "), " ".join(f"{least_distance(hexes, o):5.1f}"
                                                 for o in OBSERVERS))
     print("wrote", args.out)
