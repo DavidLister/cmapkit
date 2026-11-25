@@ -10,6 +10,24 @@ background of the plot. They are also kept apart for readers with the common
 deficiencies of colour vision, to a stated fraction of the separation that
 normal vision receives. cmapkit works with matplotlib.
 
+The first figure below compares a palette of seven colours from MCCP, on
+white, with six common palettes, of which the longer ones give their first
+seven colours. Each disc holds every colour of a palette once in each ring,
+arranged so that every pair of colours meets at least twice
+([docs/test-figures.md](docs/test-figures.md)). The rows show normal vision
+and simulated deutan, protan and tritan vision. The number under each disc is
+the least colour difference between two colours of the palette for that
+observer, in the measure that MCCP maximises, so that the comparison favours
+MCCP by construction; [docs/results.md](docs/results.md) compares the
+palettes under other measures. MCCP's colours are the most distinct for
+normal, deutan and protan vision. For tritan vision, to which it gives a
+lower priority (Section 3), its least difference of 12.7 is close to those
+of tab10 and Okabe–Ito and below the 21.2 of petroff10. The second figure
+shows the default palettes for N from 3 to 30. `tools/palette_rings.py` draws
+the first.
+
+![Palettes of seven colours on white, from MCCP and six common palettes, as ring discs in normal vision and in simulated deutan, protan and tritan vision, with the least colour difference under each](docs/img/rings_compare.png)
+
 ![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](docs/img/srgb_palettes.png)
 
 The second method, hdrmaps, is experimental. It gives long colour maps for
@@ -105,12 +123,12 @@ plt.imshow(hdr.scale(image, "sqrt"), cmap=cmap)
 ```
 
 `render` returns sRGB values in [0, 1], and in `details` the noise of the
-image, the blur applied in pixels (none unless `blur` is given) and the
-length of the map. A colour map from `colormap` is applied to the image
-after `scale`, which clips it at the 0.1 and 99.9 percentiles and takes its
-square root, as `render` does. Section 8 of
-[docs/hdrmaps.md](docs/hdrmaps.md) gives the other functions, and `tools/compare_images.py` compares two maps on
-an image.
+image, the blur applied in pixels (none unless `blur` is given) and the length
+of the map. A colour map from `colormap` is applied to the image after
+`scale`, which clips it at the 0.1 and 99.9 percentiles and takes its square
+root, as `render` does. Section 8 of [docs/hdrmaps.md](docs/hdrmaps.md) gives
+the other functions, and `tools/compare_images.py` compares two maps on an
+image.
 
 ## 3. Method
 
@@ -238,9 +256,9 @@ colours for normal vision, and `diagnostics`, which include:
 
 ## 7. Limitations
 
-- The lightness limits rest on one observer. They were measured on one
-  display in a wide-gamut mode and checked on two sRGB monitors. Backgrounds other than white, black and #333333 use
-  interpolated limits not checked by eye.
+- The lightness limits rest on one observer. They were measured on one display
+  in a wide-gamut mode and checked on two sRGB monitors. Backgrounds other
+  than white, black and #333333 use interpolated limits not checked by eye.
 - No measure of colour difference has been validated for differences as
   large as those between palette colours.
 - To keep colours distinct, MCCP admits colours of low luminance contrast

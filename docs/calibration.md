@@ -104,7 +104,7 @@ lightness_page("high", background="#ffffff", text="#000000", path="light.png")
 lightness_page("low", background="#ffffff", text="#000000", path="dark.png")
 ```
 
-Judge each chart as in Section 2, one row per column, using the full rows.
+Each chart is judged as in Section 2, one row per column, using the full rows.
 The values form a `cmapkit.bounds.HueBounds` table. There is at present no
 argument for supplying a calibration: adding one means editing `SRGB_BOUNDS`
 and `bounds_for` in `cmapkit/bounds.py`, which combines the tables for white,

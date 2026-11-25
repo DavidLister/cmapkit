@@ -205,23 +205,24 @@ luminance contrast with the background: on white, a least contrast ratio of
 1.25 to 1.37 at every N tested, against 2.0 to 2.5 for tab10.
 
 Computing a palette in the default mode takes from a few seconds at small N
-to one or two minutes at N = 50. Palettes with default settings are therefore precomputed for N from 1 to
-50 on the calibrated backgrounds.
+to one or two minutes at N = 50. Palettes with default settings are
+therefore precomputed for N from 1 to 50 on the calibrated backgrounds.
 
 ## 6. Next steps
 
 In order of cost:
 
-1. Calibrate a mid-grey background, with charts that find both edges of the
-   band around the background.
-2. Repeat the calibration with other observers and displays.
-3. Test distinct colour names (Heer and Stone 2012) as part of the measure of
-   difference, and ellipsoidal radii for different kinds of mark (Szafir
-   2018).
-4. Run a small study of readers. About 10 to 20 people would match thin
-   lines and small markers to legend entries at N = 8 and 16, using palettes
-   from MCCP, glasbey, Qualpal and tab10. Record errors, time and preference.
-   Only such a study can show whether the larger separations matter.
+1. Calibration of a mid-grey background, with charts that find both edges
+   of the band around the background.
+2. Repetition of the calibration with other observers and displays.
+3. Tests of distinct colour names (Heer and Stone 2012) as part of the
+   measure of difference, and of ellipsoidal radii for different kinds of
+   mark (Szafir 2018).
+4. A small study of readers. About 10 to 20 people would match thin lines
+   and small markers to legend entries at N = 8 and 16, using palettes from
+   MCCP, glasbey, Qualpal and tab10, with errors, time and preference
+   recorded. Only such a study can show whether the larger separations
+   matter.
 
 ## References
 

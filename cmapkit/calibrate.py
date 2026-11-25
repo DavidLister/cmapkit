@@ -163,7 +163,7 @@ def bounds_page(bounds, side="high", offsets=None, background="#ffffff", text="#
         if toward_text:
             ax.plot(len(hues) + 0.05 + 0.4 * x, y + 0.05 + 0.08 * np.sin(8 * x), color=text,
                     lw=2.0)
-        mark = "  <- your bound" if off == 0 else ""
+        mark = "  (present bound)" if off == 0 else ""
         ax.text(-0.15, y, f"bound {off:+g}{mark}", ha="right", va="center", fontsize=8,
                 color=text)
     for k, hue in enumerate(hues):

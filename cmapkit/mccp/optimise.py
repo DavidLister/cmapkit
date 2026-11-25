@@ -796,7 +796,7 @@ def palette(n, background=DEFAULT_BACKGROUND, anchors=None, radii=None, observer
         return Palette([], np.zeros((0, 3)), np.inf, np.inf, {})
     if order is not None and np.ptp(prob.radii) > 0:
         raise ValueError("order= would separate colours from their radii; "
-                         "order the series yourself when radii differ.")
+                         "when radii differ, the series must be put in order before the call.")
     if n == 1 and not len(prob.fixed_rgb):
         cand, uc, cap = _feasible_candidates(prob, candidate_grid(grid))
         rgb, log = cand[farthest_point(prob, uc, cap)], {}

@@ -5,7 +5,7 @@ CAT16, and CAM16-UCS*, Color Res. Appl. 42(6):703–718, Appendix A Part 1 and
 Appendix B. The transcription was made by an AI system (see the README,
 Section 9) from the published paper. An implementation written from it
 reproduces the test vector at the end of this note to every printed digit.
-Check it against the paper before relying on any constant.
+It should be checked against the paper before any constant is relied on.
 
 ## Inputs
 

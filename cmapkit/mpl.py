@@ -125,7 +125,7 @@ def recolor(target=None, artists=None, legend=True, strict=True, by_label=False,
     figure; series on all of them are coloured together, so that no two share
     a colour. Series are lines drawn in data coordinates and single-colour
     scatter plots, in the order they were added. Reference lines (axhline,
-    axvline) are left alone. Pass artists= to choose the series yourself.
+    axvline) are left alone. The series may instead be named with artists=.
 
     Error bars, bars, histograms, filled areas, box plots and colour-mapped
     scatter plots cannot be matched to one colour per series. With strict=True
