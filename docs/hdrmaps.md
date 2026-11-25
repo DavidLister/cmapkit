@@ -200,16 +200,18 @@ standard deviations of their noise.
 
 The figure below shows the speed directly. In each band the data rise from
 left to right and carry a sine of constant amplitude, 0.01 of the range,
-whose period is 64, 32, 16, 8, 4 and 2 pixels in six strips from the top (a
-variant of the test image of Kovesi 2015). In the lower half of each strip
-but the last its sine fades out as that of the next fades in, so that one
-strip passes into the next without an edge. A map shows the sine with a
-colour difference proportional to its speed at that place, so that a
+whose period halves in ten strips from 1024 pixels at the top to 2 at the
+bottom (a variant of the test image of Kovesi 2015). In the lower half of
+each strip but the last its sine fades out as that of the next fades in, so
+that one strip passes into the next without an edge. A map shows the sine
+with a colour difference proportional to its speed at that place, so that a
 uniform map shows it equally plainly across the band, and a long map more
-plainly than a short one. In the strips of shortest period the eye averages
-the sine away, as it averages the noise of an image, and sees the mean
-colour; the period at which this happens depends on the display and the
-distance from it. The bands are 2048 pixels wide. The figure is drawn by
+plainly than a short one. The eye sees the sine most plainly at the middle
+periods. In the strips of shortest period it averages the sine away, as it
+averages the noise of an image, and sees the mean colour; in those of
+longest period the sine is a slow change that it hardly notices. The
+periods at which this happens depend on the display and the distance from
+it. The bands are 2048 pixels wide. The figure is drawn by
 `tools/hdrmaps_figures.py`, with the one at the head of this note, and
 should be viewed at full size.
 

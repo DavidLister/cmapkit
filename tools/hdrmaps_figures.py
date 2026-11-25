@@ -12,22 +12,24 @@ each as a group of four: normal vision and simulated protan, deutan and
 tritan vision (Machado et al. 2009, at full severity).
 
 hdrmaps_ripple.png shows, for each map, a band in which the data rise
-steadily from left to right and carry a sine of constant amplitude, 0.01
-of the range. The band is divided into six strips in which the period of
-the sine is 64, 32, 16, 8, 4 and 2 pixels, from the top; the sines are in
-cosine phase, so that the last alternates between its greatest and least
+steadily from left to right and carry a sine of constant amplitude, 0.01 of
+the range. The band is divided into ten strips in which the period of the
+sine halves from 1024 pixels at the top to 2 at the bottom; the sines are
+in cosine phase, so that the last alternates between its greatest and least
 values from pixel to pixel. In the lower half of each strip but the last,
-the sine of the strip fades out as that of the next strip fades in, so
-that one strip passes into the next without an edge. The colour
-difference by which the map shows the sine at a point is its speed there
-times the amplitude (docs/hdrmaps.md, section 4), so a uniform map
-shows the sine equally plainly across the band, and the strength of the
-sine at one place against another is the ratio of the map's speeds there.
-A long map shows the sine more plainly than a short one throughout. In the
-strips of shortest period the eye averages the sine away, as it averages
-the noise of an image, and the strip shows the mean colour; the period at
-which this happens depends on the display and the viewing distance. The figure is drawn one image
-pixel to one screen pixel and should be viewed at full size.
+the sine of the strip fades out as that of the next strip fades in, so that
+one strip passes into the next without an edge. The colour difference by
+which the map shows the sine at a point is its speed there times the
+amplitude (docs/hdrmaps.md, section 4), so a uniform map shows the sine
+equally plainly across the band, and the strength of the sine at one place
+against another is the ratio of the map's speeds there. A long map shows
+the sine more plainly than a short one throughout. The eye is most
+sensitive to the sine at the middle periods. In the strips of shortest
+period it averages the sine away, as it averages the noise of an image, and
+sees the mean colour; in those of longest period the sine is a slow change
+that it hardly notices. The periods at which this happens depend on the
+display and the viewing distance. The figure is drawn one image pixel to
+one screen pixel and should be viewed at full size.
 """
 
 import argparse
@@ -47,7 +49,7 @@ OBSERVERS = ["normal", "protan", "deutan", "tritan"]
 WIDTH = 1024                     # pixels across a map: one per entry of hdrmaps.colormap
 RIPPLE_WIDTH = 2048              # pixels across a band of the ripple figure
 AMPLITUDE = 0.01                 # of the data range, so that one sine spans 0.02
-PERIODS = (64, 32, 16, 8, 4, 2)  # pixels, one strip of each from the top of a band
+PERIODS = tuple(2 ** k for k in range(10, 0, -1))  # 1024 to 2 pixels, one strip each
 
 
 def lut(name, n=WIDTH):
@@ -107,7 +109,7 @@ def _axes(fig, x, y, w, h, W, H):
     return ax
 
 
-def ripple_figure(path, width=RIPPLE_WIDTH, band=120, gap=14, label=90):
+def ripple_figure(path, width=RIPPLE_WIDTH, band=200, gap=14, label=90):
     W = label + width + 10
     H = gap + len(MAPS) * (band + gap)
     fig = _pixel_figure(W, H)
