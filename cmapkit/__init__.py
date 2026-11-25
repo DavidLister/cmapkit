@@ -6,7 +6,7 @@ lightness limits for each background (bounds) and the calibration charts
 contrast colour picking); its main functions are available here.
 """
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.1.0"
 
 from . import mccp
 from .mccp import Anchor, Palette, default_anchors, palette
