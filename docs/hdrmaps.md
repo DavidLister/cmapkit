@@ -202,8 +202,8 @@ The figure below shows the speed directly. In each band the data rise from
 left to right and carry a sine of constant amplitude, 0.01 of the range,
 whose period is 64, 32, 16, 8 and 4 pixels in five strips from the top (a
 variant of the test image of Kovesi 2015). In the lower half of each strip
-but the last the sine of the next is added, its amplitude rising from 0 at
-the middle of the strip to 0.01 at its foot. A map shows the sine with a
+but the last its sine fades out as that of the next fades in, so that one
+strip passes into the next without an edge. A map shows the sine with a
 colour difference proportional to its speed at that place, so that a
 uniform map shows it equally plainly across the band, and a long map more
 plainly than a short one. In the strips of short period the eye averages

@@ -15,9 +15,9 @@ hdrmaps_ripple.png shows, for each map, a band in which the data rise
 steadily from left to right and carry a sine of constant amplitude, 0.01
 of the range. The band is divided into five strips in which the period of
 the sine is 64, 32, 16, 8 and 4 pixels, from the top. In the lower half of
-each strip but the last, the sine of the next strip is added, its
-amplitude rising from 0 at the middle of the strip to 0.01 at the bottom,
-so that one strip passes into the next. The colour difference by which the map shows the sine at a point is its speed
+each strip but the last, the sine of the strip fades out as that of the
+next strip fades in, so that one strip passes into the next without an
+edge. The colour difference by which the map shows the sine at a point is its speed
 there times the amplitude (docs/hdrmaps.md, section 4), so a uniform map
 shows the sine equally plainly across the band, and the strength of the
 sine at one place against another is the ratio of the map's speeds there.
@@ -69,9 +69,9 @@ def simulate(rgb, kind):
 def ripple_data(width, height, amplitude=AMPLITUDE, periods=PERIODS):
     """Data in [0, 1]: a ramp across the width with a sine of constant
     amplitude along it, in strips of shorter period down the height. In the
-    lower half of each strip but the last, the sine of the next strip is
-    added, its amplitude rising linearly from 0 at the middle of the strip
-    to `amplitude` at its bottom row."""
+    lower half of each strip but the last, the sine of the strip fades
+    linearly to 0 and that of the next strip rises from 0 to `amplitude`,
+    so that the bottom row of a strip is the top row of the next."""
     x = np.arange(width)[None]
     ramp = 2 * amplitude + (1 - 4 * amplitude) * x / (width - 1)
     rows = np.arange(height)
@@ -84,7 +84,7 @@ def ripple_data(width, height, amplitude=AMPLITUDE, periods=PERIODS):
     rise[k == len(periods) - 1] = 0
     p = np.asarray(periods, float)
     nxt = p[np.minimum(k + 1, len(p) - 1)]
-    sine = np.sin(2 * np.pi * x / p[k][:, None])
+    sine = (1 - rise)[:, None] * np.sin(2 * np.pi * x / p[k][:, None])
     added = rise[:, None] * np.sin(2 * np.pi * x / nxt[:, None])
     return ramp + amplitude * (sine + added)
 
