@@ -4,9 +4,12 @@ Usage:
 
     python tools/hdrmaps_figures.py [--out DIR]
 
+Both figures draw each map 1024 pixels long, one pixel per entry of the
+tables that hdrmaps.colormap gives.
+
 hdrmaps.png shows the shipped maps and three references as colour bars,
-for normal vision and for simulated protan, deutan and tritan vision
-(Machado et al. 2009, at full severity).
+each as a group of four: normal vision and simulated protan, deutan and
+tritan vision (Machado et al. 2009, at full severity).
 
 hdrmaps_ripple.png shows, for each map, a band in which the data rise
 steadily from left to right and carry a sine of constant amplitude, 0.01
@@ -38,15 +41,22 @@ from cmapkit.space import Observer, linear_to_srgb, srgb_to_linear  # noqa: E402
 MAPS = ["path10", "path20", "grey", "cividis", "viridis", "turbo"]
 OBSERVERS = ["normal", "protan", "deutan", "tritan"]
 
+WIDTH = 1024                  # pixels across a map: one per entry of hdrmaps.colormap
 AMPLITUDE = 0.01              # of the data range, so that one sine spans 0.02
 PERIODS = (64, 32, 16, 8, 4)  # pixels, one strip of each from the top of a band
 
 
-def lut(name, n=1024):
+def lut(name, n=WIDTH):
+    """n colours of the map at equal steps. matplotlib's tables hold 256
+    entries; they are interpolated linearly, so that no map is drawn in
+    steps of several pixels."""
     if name in ("path10", "path20"):
         return path_map(name)(np.linspace(0, 1, n))
     import matplotlib
-    return matplotlib.colormaps["gray" if name == "grey" else name](np.linspace(0, 1, n))[:, :3]
+    cmap = matplotlib.colormaps["gray" if name == "grey" else name]
+    table = cmap(np.linspace(0, 1, cmap.N))[:, :3]
+    s = np.linspace(0, cmap.N - 1, n)
+    return np.stack([np.interp(s, np.arange(cmap.N), table[:, k]) for k in range(3)], -1)
 
 
 def simulate(rgb, kind):
@@ -93,7 +103,7 @@ def _axes(fig, x, y, w, h, W, H):
     return ax
 
 
-def ripple_figure(path, width=720, band=100, gap=14, label=90):
+def ripple_figure(path, width=WIDTH, band=100, gap=14, label=90):
     W = label + width + 10
     H = gap + len(MAPS) * (band + gap)
     fig = _pixel_figure(W, H)
@@ -109,25 +119,25 @@ def ripple_figure(path, width=720, band=100, gap=14, label=90):
     fig.savefig(path, dpi=100)
 
 
-def bars_figure(path, width=400, height=78, gap=20, label=140, top=50):
+def bars_figure(path, width=WIDTH, height=24, gap=18, label=150):
+    """For each map, a group of four bars: normal vision, then simulated
+    protan, deutan and tritan vision."""
     names = [m for m in MAPS if m != "grey"]
-    W = label + len(OBSERVERS) * (width + 15)
-    H = top + len(names) * (height + gap)
+    W = label + width + 10
+    group = len(OBSERVERS) * height
+    H = gap + len(names) * (group + gap)
     fig = _pixel_figure(W, H)
-    for c, kind in enumerate(OBSERVERS):
-        x = label + c * (width + 15)
-        fig.text((x + width / 2) / W, 1 - top / 2 / H, kind, ha="center", va="center",
-                 fontsize=13)
-        for r, name in enumerate(names):
-            y = top + r * (height + gap)
-            ax = _axes(fig, x, y, width, height, W, H)
-            ax.imshow(simulate(lut(name, width), kind)[None], interpolation="nearest",
-                      aspect="auto")
-            if c == 0:
-                fig.text((label - 8) / W, 1 - (y + height / 2) / H, name, ha="right",
-                         va="center", fontsize=13)
+    for r, name in enumerate(names):
+        y0 = gap + r * (group + gap)
+        table = lut(name, width)
+        fig.text(6 / W, 1 - (y0 + group / 2) / H, name, ha="left", va="center", fontsize=12)
+        for c, kind in enumerate(OBSERVERS):
+            y = y0 + c * height
+            ax = _axes(fig, label, y, width, height, W, H)
+            ax.imshow(simulate(table, kind)[None], interpolation="nearest", aspect="auto")
+            fig.text((label - 6) / W, 1 - (y + height / 2) / H, kind, ha="right",
+                     va="center", fontsize=9, color="#555555")
     fig.savefig(path, dpi=100)
-
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
