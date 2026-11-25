@@ -198,6 +198,19 @@ noise as the map shows it. Single pixels from the two parts can still be
 confused; the means of regions a few pixels across differ by several
 standard deviations of their noise.
 
+The figure below shows the speed directly. In each band the data rise from
+left to right and carry a sine of constant amplitude, 0.01 of the range,
+whose period is 32, 16, 8 and 4 pixels in four strips from the top (a
+variant of the test image of Kovesi 2015). A map shows the sine with a
+colour difference proportional to its speed at that place, so that a
+uniform map shows it equally plainly across the band, and a long map more
+plainly than a short one. In the strips of short period the eye averages
+the sine away at a distance, as it averages the noise of an image. The
+figure is drawn by `tools/hdrmaps_figures.py`, with the one at the head of
+this note, and should be viewed at full size.
+
+![Small differences shown by each map: a ramp carrying a sine of constant amplitude, in strips of shorter period from the top of each band](img/hdrmaps_ripple.png)
+
 In normal vision alone the same construction gives much longer maps: about
 860 at N = 50 and 1900 at N = 200. For protan and deutan observers these
 maps cross themselves, and they are not shipped. Maps made from palettes of

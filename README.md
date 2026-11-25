@@ -10,16 +10,35 @@ background of the plot. They are also kept apart for readers with the common
 deficiencies of colour vision, to a stated fraction of the separation that
 normal vision receives. cmapkit works with matplotlib.
 
+![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](docs/img/srgb_palettes.png)
+
 The second method, hdrmaps, is experimental. It gives long colour maps for
 images of high dynamic range, such as electron micrographs, that are uniform
 in contrast for normal and colour-deficient vision, with a length that can
 be matched to the noise of the image. It is described in
-[docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md).
+[docs/hdrmaps.md](docs/hdrmaps.md). The first figure below shows the two
+shipped maps, path10 and path20, beside three established maps, in normal
+vision and in simulated protan, deutan and tritan vision.
+
+![The shipped maps and three references, as seen in normal vision and in simulated protan, deutan and tritan vision](docs/img/hdrmaps.png)
+
+The second figure, a variant of the test image of Kovesi (2015), shows how
+plainly each map shows a small difference in the data. In each band the data
+rise from left to right and carry a sine of constant amplitude, 0.01 of the
+range, whose period is 32, 16, 8 and 4 pixels in four strips from the top.
+The colour difference by which a map shows the sine is proportional to its
+speed there, the colour difference per unit of data, so a uniform map shows
+it equally plainly across the band, and a long map shows it more plainly
+than a short one. Turbo shows the sine most plainly at its blue end, where
+its speed is about 400, and least in its green middle, where it is about
+150 (in normal vision); grey and cividis are nearly uniform, but at about
+110 they show it faintly throughout. The figure should be viewed at full size
+(`tools/hdrmaps_figures.py` draws both figures).
+
+![Small differences shown by each map: a ramp carrying a sine of constant amplitude, in strips of shorter period from the top of each band](docs/img/hdrmaps_ripple.png)
 
 The package is at the alpha stage (version 0.1.0.dev0), and its interface
 may change.
-
-![Default palettes for N from 3 to 30 on white (left), and palettes for normal vision only (right)](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/srgb_palettes.png)
 
 ## 1. Installation
 
@@ -82,7 +101,7 @@ cmap = hdr.colormap("path10")        # a matplotlib colormap
 `render` returns sRGB values in [0, 1], and in `details` the noise of the
 image, the blur applied in pixels (none unless `blur` is given) and the
 length of the map. Section 8 of
-[docs/hdrmaps.md](https://github.com/DavidLister/cmapkit/blob/main/docs/hdrmaps.md)
+[docs/hdrmaps.md](docs/hdrmaps.md)
 gives the other functions, and `tools/compare_images.py` compares two maps on
 an image.
 
@@ -122,7 +141,7 @@ normal vision.
 MCCP maximises the least separation by numerical optimisation and then
 spreads apart the colours that do not limit it. The colours are rounded to
 8-bit values. The formulation and method are given in
-[docs/design.md](https://github.com/DavidLister/cmapkit/blob/main/docs/design.md).
+[docs/design.md](docs/design.md).
 
 ## 4. Calibration
 
@@ -136,16 +155,16 @@ backgrounds the limits are interpolated in the background's lightness, and
 MCCP warns when this happens for a mid-tone background, where the
 interpolation is least certain. `diagnostics["bounds"]` states which applies.
 The procedure and the measured values are given in
-[docs/calibration.md](https://github.com/DavidLister/cmapkit/blob/main/docs/calibration.md),
+[docs/calibration.md](docs/calibration.md),
 with instructions for calibrating another background or display.
 
-![A ten-colour palette on black](https://raw.githubusercontent.com/DavidLister/cmapkit/main/docs/img/mccp10_srgb_cvd_black.png)
+![A ten-colour palette on black](docs/img/mccp10_srgb_cvd_black.png)
 
 The figure shows a ten-colour palette on black, as seen with normal vision
 (top row) and by the three simulated dichromats. In each row:
 
 - left: a ring figure, in which every pair of colours touches twice
-  ([docs/test-figures.md](https://github.com/DavidLister/cmapkit/blob/main/docs/test-figures.md));
+  ([docs/test-figures.md](docs/test-figures.md));
 - centre: the six closest pairs, with their distances;
 - right: a sample plot.
 
@@ -184,7 +203,7 @@ in nearly every measure at every N from 3 to 12.
 
 These figures are distances in models of colour difference. They have not
 been tested in a study of readers.
-[docs/results.md](https://github.com/DavidLister/cmapkit/blob/main/docs/results.md)
+[docs/results.md](docs/results.md)
 gives the comparisons in full.
 
 ## 6. Options
@@ -240,7 +259,7 @@ MATLAB. MCCP differs from them in three ways:
 - its lightness limits by hue for each background;
 - its guarantees for simulated colour-deficient observers.
 
-[docs/prior-work.md](https://github.com/DavidLister/cmapkit/blob/main/docs/prior-work.md)
+[docs/prior-work.md](docs/prior-work.md)
 reviews earlier work.
 
 ## 9. Use of AI
@@ -259,6 +278,7 @@ implementation is tested against the colour-science package.
 
 - Birch, J. (2012). Worldwide prevalence of red-green color deficiency.
   Journal of the Optical Society of America A 29(3), 313–320.
+- Kovesi, P. (2015). Good colour maps: how to design them. arXiv:1509.03700.
 - Larsson, J. (2025). Qualpal: qualitative color palettes for everyone.
   Journal of Open Source Software 10(114), 8936.
 - Li, C., Li, Z., Wang, Z., Xu, Y., Luo, M. R., Cui, G., Melgosa, M., Brill,
@@ -276,6 +296,6 @@ implementation is tested against the colour-science package.
 
 ## Licence
 
-MIT. See [LICENSE](https://github.com/DavidLister/cmapkit/blob/main/LICENSE).
-[NOTICE](https://github.com/DavidLister/cmapkit/blob/main/NOTICE) lists
+MIT. See [LICENSE](LICENSE).
+[NOTICE](NOTICE) lists
 third-party data included in the package.
