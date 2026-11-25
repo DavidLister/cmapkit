@@ -1,0 +1,33 @@
+"""hdrmaps: colour maps for images of high dynamic range.
+
+A map for such an image must be long (a large total colour difference from
+one end to the other), so that small differences in the data show at every
+level, and uniform, so that equal differences look equal. The maps of this
+subpackage are paths through the colours of a large MCCP palette, made
+smooth and kept from coming near themselves by a curve optimiser, and
+uniform for observers of normal and deficient colour vision. The length a
+map needs is set by the noise of the image (noise.py). The method and its
+limits are given in docs/hdrmaps.md.
+
+The main functions:
+
+- names, info, path_map, colormap: the shipped maps (library.py);
+- render: an image in colour through a map, without blur or, on request,
+  with a blur matched to its noise (library.py);
+- assess: the length, uniformity and separation of any map for each
+  observer (measure.py);
+- scale, noise_sd, noise_range, required_length, blur_for_length,
+  map_length: the scaling of an image and the noise model (noise.py).
+
+The modules paths and curve make new maps (tools/make_hdrmaps.py shows
+how).
+"""
+
+from .library import colormap, info, names, path_map, render
+from .measure import assess
+from .noise import blur_for_length, map_length, noise_range, noise_sd, required_length, scale
+from .paths import IMAGE_VIEW, PATH_VIEW
+
+__all__ = ["IMAGE_VIEW", "PATH_VIEW", "assess", "blur_for_length", "colormap", "info",
+           "map_length", "names", "noise_range", "noise_sd", "path_map", "render",
+           "required_length", "scale"]

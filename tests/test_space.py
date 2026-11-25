@@ -64,3 +64,14 @@ def test_jacobian_matches_finite_difference():
 
 def test_cvd_severity_zero_is_identity():
     np.testing.assert_allclose(Observer("protan", 0.0).matrix(), np.eye(3), atol=1e-6)
+
+
+@pytest.mark.parametrize("bg_y", [100.0, 20.0, 0.0])
+@pytest.mark.parametrize("ucs", ["UCS", "LCD"])
+def test_inverse_round_trip(bg_y, ucs):
+    ucs_ = CAM16UCS(Viewing(background_y=bg_y, ucs=ucs))
+    rng = np.random.default_rng(1)
+    lin = rng.uniform(0, 1, (2000, 3))
+    lin = np.vstack([lin, np.eye(3), np.ones((1, 3)), np.zeros((1, 3)), np.full((1, 3), 0.2)])
+    back = ucs_.to_linear(ucs_.from_linear(lin))
+    assert np.max(np.abs(back - lin)) < 1e-9

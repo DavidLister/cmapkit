@@ -204,6 +204,53 @@ class CAM16UCS:
         """sRGB (n, 3) in [0, 1] to CAM16-UCS (n, 3)."""
         return self.from_linear(srgb_to_linear(rgb))
 
+    def xyz_from_cam16(self, J, M, h):
+        """Inverse of cam16_from_xyz: XYZ (white Y = 100) from J, M and h in
+        degrees. The a and b of the opponent signals follow the inverse of
+        CIECAM02 (CIE 159:2004), which CAM16 shares."""
+        J, M, h = np.broadcast_arrays(*(np.asarray(x, dtype=float) for x in (J, M, h)))
+        hr = np.radians(h)
+        C = M / self.F_L ** 0.25
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t = (C / (np.sqrt(J / 100) * (1.64 - 0.29 ** self.n) ** 0.73)) ** (1 / 0.9)
+        t = np.nan_to_num(t, nan=0.0, posinf=0.0)
+        e_t = 0.25 * (np.cos(hr + 2) + 3.8)
+        A = self.A_w * (J / 100) ** (1 / (self.c * self.z))
+        p2 = A / self.N_bb + 0.305
+        p3 = 21 / 20
+        s, c = np.sin(hr), np.cos(hr)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            p1 = 50000 / 13 * self.N_c * self.N_bb * e_t / t
+            use_sin = np.abs(s) >= np.abs(c)
+            b_s = (p2 * (2 + p3) * 460 / 1403
+                   / (p1 / s + (2 + p3) * 220 / 1403 * c / s - 27 / 1403 + p3 * 6300 / 1403))
+            a_c = (p2 * (2 + p3) * 460 / 1403
+                   / (p1 / c + (2 + p3) * 220 / 1403 - (27 / 1403 - p3 * 6300 / 1403) * s / c))
+            a = np.where(use_sin, b_s * c / s, a_c)
+            b = np.where(use_sin, b_s, a_c * s / c)
+        a = np.where(t == 0, 0.0, a)
+        b = np.where(t == 0, 0.0, b)
+        ra = np.stack([(460 * p2 + 451 * a + 288 * b) / 1403,
+                       (460 * p2 - 891 * a - 261 * b) / 1403,
+                       (460 * p2 - 220 * a - 6300 * b) / 1403], axis=-1)
+        x = ra - 0.1
+        rc = np.sign(x) * 100 / self.F_L * (27.13 * np.abs(x) / (400 - np.abs(x))) ** (1 / 0.42)
+        return (rc / self.D_rgb) @ np.linalg.inv(M16).T
+
+    def to_linear(self, u):
+        """CAM16-UCS (n, 3) to linear sRGB (n, 3), not clipped: values outside
+        [0, 1] mean the colour lies outside the sRGB gamut."""
+        u = np.asarray(u, dtype=float)
+        Jp = u[..., 0] * self.K_L
+        J = Jp / (1 + 100 * self.c1 - self.c1 * Jp)
+        Mp = np.hypot(u[..., 1], u[..., 2])
+        M = np.expm1(self.c2 * Mp) / self.c2
+        h = np.degrees(np.arctan2(u[..., 2], u[..., 1])) % 360
+        xyz = self.xyz_from_cam16(J, M, h)
+        f = self.view.flare
+        xyz = xyz * (1 + f) - f * XYZ_WHITE
+        return xyz @ np.linalg.inv(M_SRGB).T / 100.0
+
 
 @dataclass(frozen=True)
 class Observer:
