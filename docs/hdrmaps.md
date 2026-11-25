@@ -200,8 +200,10 @@ standard deviations of their noise.
 
 The figure below shows the speed directly. In each band the data rise from
 left to right and carry a sine of constant amplitude, 0.01 of the range,
-whose period is 32, 16, 8 and 4 pixels in four strips from the top (a
-variant of the test image of Kovesi 2015). A map shows the sine with a
+whose period is 64, 32, 16, 8 and 4 pixels in five strips from the top (a
+variant of the test image of Kovesi 2015). In the lower half of each strip
+but the last the sine of the next is added, its amplitude rising from 0 at
+the middle of the strip to 0.01 at its foot. A map shows the sine with a
 colour difference proportional to its speed at that place, so that a
 uniform map shows it equally plainly across the band, and a long map more
 plainly than a short one. In the strips of short period the eye averages
@@ -259,6 +261,7 @@ protan and deutan observers, from either order of Section 5.
 ## 8. Use
 
 ```python
+import matplotlib.pyplot as plt
 import cmapkit.hdrmaps as hdr
 
 hdr.names()                        # ['path10', 'path20']
@@ -268,6 +271,7 @@ rgb, d = hdr.render(image, "path10", blur="matched")   # noise shown at T = 3
 rgb, d = hdr.render(image, "viridis", blur=1.5)        # any matplotlib map
 
 cmap = hdr.colormap("path20")      # a matplotlib colormap
+plt.imshow(hdr.scale(image, "sqrt"), cmap=cmap)   # scaled as render scales it
 hdr.assess(hdr.path_map("path20").lut)         # measures of Section 6
 hdr.info("path20")                 # what was recorded when it was made
 ```

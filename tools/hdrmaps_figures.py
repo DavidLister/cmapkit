@@ -10,9 +10,11 @@ for normal vision and for simulated protan, deutan and tritan vision
 
 hdrmaps_ripple.png shows, for each map, a band in which the data rise
 steadily from left to right and carry a sine of constant amplitude, 0.01
-of the range. The band is divided into four strips in which the period of
-the sine is 32, 16, 8 and 4 pixels, from the top. The
-colour difference by which the map shows the sine at a point is its speed
+of the range. The band is divided into five strips in which the period of
+the sine is 64, 32, 16, 8 and 4 pixels, from the top. In the lower half of
+each strip but the last, the sine of the next strip is added, its
+amplitude rising from 0 at the middle of the strip to 0.01 at the bottom,
+so that one strip passes into the next. The colour difference by which the map shows the sine at a point is its speed
 there times the amplitude (docs/hdrmaps.md, section 4), so a uniform map
 shows the sine equally plainly across the band, and the strength of the
 sine at one place against another is the ratio of the map's speeds there.
@@ -36,8 +38,8 @@ from cmapkit.space import Observer, linear_to_srgb, srgb_to_linear  # noqa: E402
 MAPS = ["path10", "path20", "grey", "cividis", "viridis", "turbo"]
 OBSERVERS = ["normal", "protan", "deutan", "tritan"]
 
-AMPLITUDE = 0.01          # of the data range, so that the sine spans 0.02
-PERIODS = (32, 16, 8, 4)  # pixels, one strip of each from the top of a band
+AMPLITUDE = 0.01              # of the data range, so that one sine spans 0.02
+PERIODS = (64, 32, 16, 8, 4)  # pixels, one strip of each from the top of a band
 
 
 def lut(name, n=1024):
@@ -56,11 +58,25 @@ def simulate(rgb, kind):
 
 def ripple_data(width, height, amplitude=AMPLITUDE, periods=PERIODS):
     """Data in [0, 1]: a ramp across the width with a sine of constant
-    amplitude along it, in strips of shorter period down the height."""
-    x = np.arange(width)
-    ramp = amplitude + (1 - 2 * amplitude) * x / (width - 1)
-    period = np.asarray(periods, float)[np.arange(height) * len(periods) // height]
-    return ramp[None] + amplitude * np.sin(2 * np.pi * x[None] / period[:, None])
+    amplitude along it, in strips of shorter period down the height. In the
+    lower half of each strip but the last, the sine of the next strip is
+    added, its amplitude rising linearly from 0 at the middle of the strip
+    to `amplitude` at its bottom row."""
+    x = np.arange(width)[None]
+    ramp = 2 * amplitude + (1 - 4 * amplitude) * x / (width - 1)
+    rows = np.arange(height)
+    k = rows * len(periods) // height                  # strip of each row
+    start = -(-np.arange(len(periods)) * height // len(periods))  # first row of each
+    end = np.append(start[1:], height)
+    h = (end - start)[k]
+    pos = (rows - start[k] + 1) / h                    # (0, 1] down the strip
+    rise = np.clip(2 * pos - 1, 0, 1)
+    rise[k == len(periods) - 1] = 0
+    p = np.asarray(periods, float)
+    nxt = p[np.minimum(k + 1, len(p) - 1)]
+    sine = np.sin(2 * np.pi * x / p[k][:, None])
+    added = rise[:, None] * np.sin(2 * np.pi * x / nxt[:, None])
+    return ramp + amplitude * (sine + added)
 
 
 def _pixel_figure(width, height):
@@ -77,7 +93,7 @@ def _axes(fig, x, y, w, h, W, H):
     return ax
 
 
-def ripple_figure(path, width=720, band=64, gap=14, label=90):
+def ripple_figure(path, width=720, band=100, gap=14, label=90):
     W = label + width + 10
     H = gap + len(MAPS) * (band + gap)
     fig = _pixel_figure(W, H)

@@ -25,14 +25,16 @@ vision and in simulated protan, deutan and tritan vision.
 The second figure, a variant of the test image of Kovesi (2015), shows how
 plainly each map shows a small difference in the data. In each band the data
 rise from left to right and carry a sine of constant amplitude, 0.01 of the
-range, whose period is 32, 16, 8 and 4 pixels in four strips from the top.
-The colour difference by which a map shows the sine is proportional to its
-speed there, the colour difference per unit of data, so a uniform map shows
-it equally plainly across the band, and a long map shows it more plainly
-than a short one. Turbo shows the sine most plainly at its blue end, where
-its speed is about 400, and least in its green middle, where it is about
-150 (in normal vision); grey and cividis are nearly uniform, but at about
-110 they show it faintly throughout. The figure should be viewed at full size
+range, whose period is 64, 32, 16, 8 and 4 pixels in five strips from the top.
+In the lower half of each strip but the last, the sine of the next is added,
+rising from nothing at the middle of the strip to the same amplitude at its
+foot. The colour difference by which a map shows the sine is proportional to
+its speed there, the colour difference per unit of data, so a uniform map
+shows it equally plainly across the band, and a long map shows it more plainly
+than a short one. Turbo shows the sine most plainly at its blue end, where its
+speed is about 400, and least in its green middle, where it is about 150 (in
+normal vision); grey and cividis are nearly uniform, but at about 110 they
+show it faintly throughout. The figure should be viewed at full size
 (`tools/hdrmaps_figures.py` draws both figures).
 
 ![Small differences shown by each map: a ramp carrying a sine of constant amplitude, in strips of shorter period from the top of each band](docs/img/hdrmaps_ripple.png)
@@ -92,17 +94,22 @@ limits (`cmapkit.space`, `cmapkit.bounds`) are shared with hdrmaps.
 For an image of high dynamic range:
 
 ```python
+import matplotlib.pyplot as plt
 import cmapkit.hdrmaps as hdr
 
 rgb, details = hdr.render(image)     # 'path20', no blur
+plt.imshow(rgb)
+
 cmap = hdr.colormap("path10")        # a matplotlib colormap
+plt.imshow(hdr.scale(image, "sqrt"), cmap=cmap)
 ```
 
 `render` returns sRGB values in [0, 1], and in `details` the noise of the
 image, the blur applied in pixels (none unless `blur` is given) and the
-length of the map. Section 8 of
-[docs/hdrmaps.md](docs/hdrmaps.md)
-gives the other functions, and `tools/compare_images.py` compares two maps on
+length of the map. A colour map from `colormap` is applied to the image
+after `scale`, which clips it at the 0.1 and 99.9 percentiles and takes its
+square root, as `render` does. Section 8 of
+[docs/hdrmaps.md](docs/hdrmaps.md) gives the other functions, and `tools/compare_images.py` compares two maps on
 an image.
 
 ## 3. Method
